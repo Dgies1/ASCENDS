@@ -1,0 +1,11 @@
+[HYPERPARAMETERS]
+
+xgb_subsample = 1.0
+xgb_reg_alpha = 1e-05
+xgb_n_estimators = 739
+xgb_min_child_weight = 2
+xgb_max_depth = 8
+xgb_learning_rate = 0.1
+xgb_gamma = 0.2
+xgb_colsample_bytree = 1.0
+scaler_option = AutoLoad

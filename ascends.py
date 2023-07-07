@@ -24,6 +24,8 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import StackingRegressor
+from sklearn.ensemble import StackingClassifier
 from sklearn.feature_selection import f_regression
 from sklearn.feature_selection import SelectFromModel
 from sklearn.feature_selection import SelectKBest
@@ -42,6 +44,7 @@ from sklearn.model_selection import RandomizedSearchCV
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import Pipeline
+from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import Normalizer
 from sklearn.preprocessing import StandardScaler
@@ -69,37 +72,40 @@ from sklearn.linear_model import LogisticRegression
 from os import path
 from pathlib import PurePath
 from tensorflow.python.util import deprecation
-import tensorflow as tf
 import multiprocessing
+from xgboost import XGBClassifier
+from xgboost import XGBRegressor
+from sklearn.model_selection import train_test_split
 
 deprecation._PRINT_DEPRECATION_WARNINGS = False
 
-config = tf.ConfigProto()
+config = tf.compat.v1.ConfigProto()
 #config.gpu_options.per_process_gpu_memory_fraction = 0.5 # maximun alloc gpu50% of MEM
 #config.gpu_options.allow_growth = True #allocate dynamically
 
 #config = tf.ConfigProto( device_count = {'GPU': 2 , 'CPU':4 } ) 
-sess = tf.Session(config=config)
-keras.backend.set_session(sess)
+sess = tf.compat.v1.Session(config = config)
+tf.compat.v1.keras.backend.set_session(sess)
 #os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '2'
 
-def save_test_data(predictions, actual_values, filename):
-    df_predictions = pd.DataFrame(predictions, columns=['predictions'])
-    df_actual_values = pd.DataFrame(actual_values, columns=['actual_values'])
+def save_test_data(predictions, actual_values, filename) -> None:
+    """save predictions and actual values to a csv"""
+    df_predictions = pd.DataFrame(predictions, columns = ['predictions'])
+    df_actual_values = pd.DataFrame(actual_values, columns = ['actual_values'])
     df = df_predictions.join(df_actual_values)
     df.to_csv(filename)
     
 # In[3]:
 
 def load_header(csv_file, print_out = False):
-    
+    """returns the headers, a dict from the indices to the headers, and vice-versa\n
+    if print_out, then print dict from indices to headers"""
     # Loading headers
     
-    headers = pd.read_csv(csv_file,header=None, nrows=1).values[0]
+    headers = np.array(pd.read_csv(csv_file, nrows = 0).columns)
     idx_to_key = {}
     key_to_idx = {}
-    
     for i in range(0, len(headers)):
         idx = i
         key = headers[i]
@@ -111,100 +117,79 @@ def load_header(csv_file, print_out = False):
         
     return headers, idx_to_key, key_to_idx
 
-def model_name(model_abbr):
-    model_name = None
-    if(model_abbr =='RF'):
-        model_name = 'Random Forest'
-    elif(model_abbr =='NET'):
-        model_name = 'Neural Network'
-    elif(model_abbr =='LR'):
-        model_name = 'Linear Regression'
-    elif(model_abbr =='LRC'):
-        model_name = 'Logistic Regression'
-    elif(model_abbr =='RG'):
-        model_name = 'Ridge'
-    elif(model_abbr =='KR'):
-        model_name = 'Kernel Ridge'
-    elif(model_abbr =='BR'):
-        model_name = 'Bayesian Ridge'
-    elif(model_abbr =='SVM'):
-        model_name = 'Support Vector Machine'
-    elif(model_abbr =='NN'):
-        model_name = 'k-Nearest Neighbor'
-    return model_name
+def model_name(model_abbr) -> str:
+    """returns the full model name for the abbreviation\n
+    returns None if the abbreviation is unknown"""
+    abbr2name = {"RF": "Random Forest", "NET": "Neural Network", "LR": "Linear Regression", 
+                 "LRC": "Logistic Regression", "RG": "Ridge", "KR": "Kernel Ridge", 
+                 "BR": "Bayesian Ridge", "SVM": "Support Vector Machine", "NN": "k-Nearest Neighbor",
+                 "XGB": "Extreme Gradient Boosting"}
+    if model_abbr not in abbr2name:
+        print("Error: unknown model abbreviation ", model_abbr)
+    return abbr2name[model_abbr]
 
 # In[4]:
 
-def data_load_shuffle(csv_file, input_col, cols_to_remove, target_col, random_state=0, delimiter = ',', map_all = None):
+def data_load_shuffle(csv_file: PurePath, train_cols: list, cols_to_remove: list, target_col: str, random_state = 0, delimiter = ',', map_all: dict = None, ordinal_cols: list = None):
+    """read csv, isolate x, y, and split train and test data"""
+    if train_cols is not None and cols_to_remove is not None:
+        if len(train_cols) != 0 and len(cols_to_remove) != 0:
+            print("ERROR: train_cols and cols_to_remove are mutually exclusive")
     data = pd.read_csv(csv_file, delimiter = delimiter)
-    
-    data_df = data[data[target_col].notnull()]
+    data = data[data[target_col].notnull()] # TODO: see if this needs to be a separate Dataframe
+    if train_cols is not None:
+        data = data[train_cols+[target_col]]
     if cols_to_remove is not None:
+        if target_col in cols_to_remove:
+            print("ERROR: tried to remove target_col")
         for col in cols_to_remove:
-            del data_df[col]
-    
-    data_df_shuffle = data_df.sample(frac=1, random_state=random_state)
-    
-    if input_col is not None:
-        data_df_shuffle = data_df_shuffle[input_col+[target_col]]
-        data_df = data_df[input_col+[target_col]]
-    y_train = pd.DataFrame(data_df_shuffle[target_col])
-    
-    # training set is without target column
-    del data_df_shuffle[target_col]
-    x_train = data_df_shuffle.copy()
-    headers, idx_to_key, key_to_idx = load_header(csv_file)
-    
-    cols_to_remove_ = []
-    headers = list(headers)
-    header_y = target_col
-    
-    if cols_to_remove is not None:
-        for col in cols_to_remove:
-            headers.remove(col)
-    
-    headers.remove(target_col)
-    # dataframe to numpy array
-    x_train_original = x_train
-    y_train = y_train.values
-    x_train = x_train.values
-    
-    # reshaping target values
-    y_train = y_train.reshape(y_train.shape[0],1)
-    
-    if input_col is not None:
-        header_x = np.array(input_col)
-    else:
-        header_x = np.array(headers)
-
-    key_idx = -1
+            del data[col]
+    data = data.dropna(how='any',axis=0) # TODO: find out if we want to remove all rows with ANY NULL values
+    # User defined mapping
     if map_all is not None:
-        for key in map_all.keys():
-            for i in range(0, len(header_x)):
-                if header_x[i]==key:
-                    key_idx = i
-                    break
-            if key_idx!=-1:
-                for item in x_train:  
-                    item[key_idx] = map_all[key][item[key_idx]]
-    
-    if map_all is not None:
-        for key in map_all.keys():
-            if header_y==key:
-                new_y_train = []
-                for item in y_train:
-                    item = [map_all[key][item[0]]]
-                    new_y_train.append(item)
-                y_train = np.array(new_y_train)
-                
-    
-        for key in map_all.keys():
-            data_df[key] = data_df[key].map(map_all[key])
-
-    x_train = x_train.astype('float32')
-    y_train = y_train.astype('float32')
-    
-    return data_df, x_train, y_train, header_x, header_y
+        for col in map_all:
+            if col in data.columns:
+                col_map = map_all[col]
+                data[col] = data[col].apply(lambda x: col_map[x])
+    # User defined ordinal encoding
+    if ordinal_cols is not None:
+        for col in ordinal_cols:
+            if data[col].dtype.name != 'object':
+                print("ERROR:", col, "is not categorical")
+                continue
+            col_dict = {}
+            for element in data[col]:
+                if element not in col_dict:
+                    col_dict[element] = len(col_dict)
+            data[col] = data[col].map(col_dict)
+    # Automatic ordinal encoding for target col
+    if data[target_col].dtype.name == 'object':
+        col_dict = {}
+        for element in data[target_col]:
+            if element not in col_dict:
+                col_dict[element] = len(col_dict)
+        data[target_col] = data[target_col].map(col_dict)
+    # Automatic one-hot encoding on training cols
+    for col in data.columns:
+        if col == target_col: # this does nothing, but maybe keep in case code is reordered
+            continue
+        if data[col].dtype.name == 'object':
+            one_hot = pd.get_dummies(data[col])
+            data = data.drop(col, axis = 1)
+            data = data.join(one_hot)
+    y_header = target_col
+    y = data[y_header]
+    data = data.drop(y_header, axis = 1)
+    x_headers = list(data.columns)
+    x = data[x_headers]
+    x_train, x_test, y_train, y_test = train_test_split(x, y)
+    # TODO: decide whether we want to split
+    # PROS: greater testing accuracy (less bias), good for comparing models
+    # CONS: lower prediction accuracy
+    # Ideally we let the user choose, split when deciding, and once the decision is made don't split for maximum prediction accuracy
+    x_train = pd.concat([x_train, x_test])
+    y_train = pd.concat([y_train, y_test])
+    return data, x_train, x_test, y_train, y_test, x_headers, y_header
 
 def correlation_analysis_all(data_df, target_col, top_k=10, file_to_save = None, save_chart = None, only_pcc= False, feature_selection_file = None):
     
@@ -316,17 +301,17 @@ def correlation_analysis_all(data_df, target_col, top_k=10, file_to_save = None,
 # In[6]:
 
 
-def default_model_parameters_classifier():
-    
+def default_model_parameters_classifier() -> dict[str, str]:
+    """returns default model params for classification"""
     model_parameters = {
     'scaler_option':'StandardScaler', \
-    'rf_n_estimators': '100', 'rf_max_features': 'auto', 'rf_max_depth': 'None', \
+    'rf_n_estimators': '100', 'rf_max_features': '1.0', 'rf_max_depth': 'None', \
     'rf_min_samples_split': '2', 'rf_min_samples_leaf': '1', 'rf_bootstrap': 'True', \
     'rf_criterion':'gini','rf_min_weight_fraction_leaf':'0.','rf_max_leaf_nodes':'None',\
     'rf_min_impurity_decrease':'0.',\
     'nn_n_neighbors': '5', 'nn_weights': 'uniform', 'nn_algorithm': 'auto', 'nn_leaf_size': '30', 'nn_p': '2',\
     'nn_metric':'minkowski','nn_metric_params':'None',
-    'rg_alpha':'1','rg_fit_intercept':'True','rg_normalize':'False','rg_max_iter':'None','rg_tol':'0.001','rg_class_weight':'None','rg_solver':'auto','svm_kernel': 'rbf', \
+    'rg_alpha':'1','rg_fit_intercept':'True','rg_max_iter':'None','rg_tol':'0.001','rg_class_weight':'None','rg_solver':'auto','svm_kernel': 'rbf', \
     'svm_degree': '3', 'svm_coef0': '0.0', 'svm_tol': '1e-3', 'svm_c': '1.0', \
     'svm_gamma': 'auto', \
     'svm_decision_function_shape':'ovr', \
@@ -340,16 +325,24 @@ def default_model_parameters_classifier():
     'net_batch_size': '2',\
 
     }
+    """
+    
+    n_estimators
+    max_leaves
+    max_bin
+    grow_policy
+    objective
+    sampling_method """
 
     return model_parameters 
 
-def default_model_parameters():
-    
+def default_model_parameters() -> dict[str, str]:
+    """returns default model params for regression"""
     model_parameters = {
     'scaler_option':'StandardScaler', \
-    'rf_n_estimators': '100', 'rf_max_features': 'auto', 'rf_max_depth': 'None', \
+    'rf_n_estimators': '100', 'rf_max_features': '1.0', 'rf_max_depth': 'None', \
     'rf_min_samples_split': '2', 'rf_min_samples_leaf': '1', 'rf_bootstrap': 'True', \
-    'rf_criterion':'mse','rf_min_weight_fraction_leaf':'0.','rf_max_leaf_nodes':'None',\
+    'rf_criterion':'friedman_mse','rf_min_weight_fraction_leaf':'0.','rf_max_leaf_nodes':'None',\
     'rf_min_impurity_decrease':'0.',\
     'nn_n_neighbors': '5', 'nn_weights': 'uniform', 'nn_algorithm': 'auto', 'nn_leaf_size': '30', 'nn_p': '2',\
     'nn_metric':'minkowski','nn_metric_params':'None',\
@@ -357,13 +350,13 @@ def default_model_parameters():
     'kr_alpha': '1', 'kr_kernel': 'linear', 'kr_gamma': 'None', 'kr_degree': '3', 'kr_coef0': '1', \
     
     'br_n_iter': '300', 'br_alpha_1': '1.2e-6', 'br_alpha_2': '1.e-6', 'br_tol': '1.e-3', \
-    'br_lambda_1': '1.e-6', 'br_lambda_2': '1.e-6', 'br_compute_score': 'False', 'br_fit_intercept': 'True', \
-    'br_normalize':'False',\
+    'br_lambda_1': '1.e-6', 'br_lambda_2': '1.e-6', 'br_compute_score': 'False', 'br_fit_intercept': 'True',\
     
     'svm_kernel': 'rbf', \
     'svm_degree': '3', 'svm_coef0': '0.0', 'svm_tol': '1e-3', 'svm_c': '1.0', \
     'svm_epsilon': '0.1', 'svm_shrinking': 'True', 'svm_gamma': 'auto', \
-    
+    'xgb_n_estimators': '100', 'xgb_min_child_weight': '1', 'xgb_max_depth': '6', \
+    'xgb_learning_rate': '0.3', 'xgb_gamma': '0.0', \
     
     'net_structure':'16 16 16',\
     'net_layer_n':'3',\
@@ -377,7 +370,7 @@ def default_model_parameters():
 
     return model_parameters 
 
-def load_model_parameter_from_file(filename):
+def load_model_parameter_from_file(filename) -> dict:
 
     config = configparser.RawConfigParser()
     config.read(filename)
@@ -389,90 +382,112 @@ def load_model_parameter_from_file(filename):
 
 # In[7]:
 
-def fix_value(val, val_type):
+def fix_value(val, val_type, value_error_ok = False):
+    """convert val into a val_type object"""
     if val is None or val=='None':
         return None
-    elif val=='auto':
+    if val=='auto':
         return val
-    else:
+    try:
         if(val_type=='float'):
             return float(val)
-        elif(val_type=='str'):
+        if (val_type=='str'):
             return str(val)
-        elif(val_type=='int'):
+        if (val_type=='int'):
             return int(val)
-        elif(val_type=='bool'):
+        if (val_type=='bool'):
             return str2bool(val)
-        elif val_type=='PurePath':
+        if val_type=='PurePath':
             return PurePath(val)
         else:
             return val
+    except ValueError:
+        if value_error_ok:
+            return val
 
-def define_model_classifier(model_type, model_parameters, x_header_size, random_state = None):
-
+def define_model_classifier(model_type, model_parameters, x_header_size, random_state = None) -> Pipeline:
+    """initialize and return classification Pipeline object using model_type and parameters"""
     if model_type == "LRC":
         model = Pipeline([
           ('classification', LogisticRegression())
         ])
     elif model_type == "RF":
-        model = Pipeline([
-          ('classification', RandomForestClassifier(n_estimators = int(model_parameters['rf_n_estimators']), 
-                                                   max_features = fix_value(model_parameters['rf_max_features'],'int'), 
-                                                   max_depth = fix_value(model_parameters['rf_max_depth'],'int'), 
-                                                   min_samples_split = int(model_parameters['rf_min_samples_split']), 
-                                                   min_samples_leaf = int(model_parameters['rf_min_samples_leaf']), 
-                                                   bootstrap = str2bool(model_parameters['rf_bootstrap']), 
-                                                   criterion = model_parameters['rf_criterion'], 
-                                                   random_state = random_state,
-                                                   min_weight_fraction_leaf = float(model_parameters['rf_min_weight_fraction_leaf']), 
-                                                   max_leaf_nodes = fix_value(model_parameters['rf_max_leaf_nodes'],'int'),
-                                                   min_impurity_decrease = float(model_parameters['rf_min_impurity_decrease']), 
-                                                  ))])
+        max_features = fix_value(model_parameters['rf_max_features'],'float', True)
+        if max_features > 1.0:
+            max_features = int(max_features)
+        estimators = [
+            ('classification', RandomForestClassifier(n_estimators = int(model_parameters['rf_n_estimators']), 
+                                                      max_features = max_features,
+                                                      max_depth = fix_value(model_parameters['rf_max_depth'],'int'), 
+                                                      min_samples_split = int(model_parameters['rf_min_samples_split']), 
+                                                      min_samples_leaf = int(model_parameters['rf_min_samples_leaf']), 
+                                                      bootstrap = str2bool(model_parameters['rf_bootstrap']), 
+                                                      criterion = model_parameters['rf_criterion'], 
+                                                      random_state = random_state,
+                                                      min_weight_fraction_leaf = float(model_parameters['rf_min_weight_fraction_leaf']), 
+                                                      max_leaf_nodes = fix_value(model_parameters['rf_max_leaf_nodes'],'int'),
+                                                      min_impurity_decrease = float(model_parameters['rf_min_impurity_decrease'])))
+            #('xgboost', XGBClassifier())
+        ]
+
+        # Create the StackingRegressor with the base estimators
+        stacking_classifier = StackingClassifier(
+            estimators=estimators
+        )
+        model = make_pipeline(stacking_classifier)
+
+
+
+
     elif model_type == "NN":
         model = Pipeline([
-          ('classification', KNeighborsClassifier(n_neighbors = int(model_parameters['nn_n_neighbors']),
-                                                 weights = model_parameters['nn_weights'],
-                                                 algorithm = model_parameters['nn_algorithm'],
-                                                 leaf_size = int(model_parameters['nn_leaf_size']),
-                                                 metric = model_parameters['nn_metric'],
-                                                 metric_params = fix_value(model_parameters['nn_metric_params'],'str'),
-                                                 p = int(model_parameters['nn_p'])))
+            ('classification', KNeighborsClassifier(n_neighbors = int(model_parameters['nn_n_neighbors']),
+                                                    weights = model_parameters['nn_weights'],
+                                                    algorithm = model_parameters['nn_algorithm'],
+                                                    leaf_size = int(model_parameters['nn_leaf_size']),
+                                                    metric = model_parameters['nn_metric'],
+                                                    metric_params = fix_value(model_parameters['nn_metric_params'],'str'),
+                                                    p = int(model_parameters['nn_p'])))
         ])
 
     elif model_type == "RG":
         model = Pipeline([
-          ('classification', RidgeClassifier(alpha = float(model_parameters['rg_alpha']),
+            ('classification', RidgeClassifier(alpha = float(model_parameters['rg_alpha']),
                                             fit_intercept = fix_value(model_parameters['rg_fit_intercept'],'bool'),
-                                            normalize = fix_value(model_parameters['rg_normalize'],'bool'),
                                             max_iter = fix_value(model_parameters['rg_max_iter'],'int'),
                                             tol = float(model_parameters['rg_tol']),
                                             class_weight = fix_value(model_parameters['rg_class_weight'],'str'),
-                                            solver = fix_value(model_parameters['rg_solver'],'str')))                                                                              
+                                            solver = fix_value(model_parameters['rg_solver'],'str')))                                                                   
         ])
     elif model_type == "SVM":
         model = Pipeline([
-          ('classification', svm.SVC(kernel = model_parameters['svm_kernel'],
+            ('classification', svm.SVC(kernel = model_parameters['svm_kernel'],
                                      degree = int(model_parameters['svm_degree']),
                                      coef0 = float(model_parameters['svm_coef0']),
                                      tol = float(model_parameters['svm_tol']),
                                      C = float(model_parameters['svm_c']),
                                      gamma = fix_value(model_parameters['svm_gamma'],'float'),
-                                     decision_function_shape = model_parameters['svm_decision_function_shape']
-                                     ))
+                                     decision_function_shape = model_parameters['svm_decision_function_shape']))
         ])
+    else:
+        print("Error: idkrn")
         
-    return model
+    return model # TODO: find out if model can ever be undefined here
 
-def define_model_regression(model_type, model_parameters, x_header_size, random_state = None):
-
+def define_model_regression(model_type, model_parameters, x_header_size, random_state = None) -> Pipeline:
+    """initialize and return regression Pipeline object using model_type and parameters"""
     if model_type == "LR":
         model = Pipeline([
-          ('regression', LinearRegression())
+            ('regression', LinearRegression())
         ])
     elif model_type == "RF":
-        model = Pipeline([
-          ('regression', RandomForestRegressor(n_estimators = int(model_parameters['rf_n_estimators']), 
-                                                   max_features = fix_value(model_parameters['rf_max_features'],'int'), 
+        asdf = model_parameters['rf_max_features']
+        max_features = fix_value(model_parameters['rf_max_features'],'float', True)
+        if max_features > 1.0:
+            max_features = int(max_features)
+        estimators = [
+            ('random_forest', RandomForestRegressor(n_estimators = int(model_parameters['rf_n_estimators']), 
+                                                   max_features = max_features,
                                                    max_depth = fix_value(model_parameters['rf_max_depth'],'int'), 
                                                    min_samples_split = int(model_parameters['rf_min_samples_split']), 
                                                    min_samples_leaf = int(model_parameters['rf_min_samples_leaf']), 
@@ -480,11 +495,34 @@ def define_model_regression(model_type, model_parameters, x_header_size, random_
                                                    criterion = model_parameters['rf_criterion'], random_state = random_state,
                                                    min_weight_fraction_leaf = float(model_parameters['rf_min_weight_fraction_leaf']), 
                                                    max_leaf_nodes = fix_value(model_parameters['rf_max_leaf_nodes'],'int'),
-                                                   min_impurity_decrease = float(model_parameters['rf_min_impurity_decrease']), 
-                                                  ))])
+                                                   min_impurity_decrease = float(model_parameters['rf_min_impurity_decrease'])))
+            #('xgboost', XGBRegressor())
+        ]
+
+        # Create the StackingRegressor with the base estimators
+        stacking_regressor = StackingRegressor(
+            estimators=estimators
+        )
+        model = make_pipeline(stacking_regressor)
+
+        """
+        model = Pipeline([
+            ('regression', RandomForestRegressor(n_estimators = int(model_parameters['rf_n_estimators']), 
+                                                   max_features = fix_value(model_parameters['rf_max_features'],'float', True), 
+                                                   max_depth = fix_value(model_parameters['rf_max_depth'],'int'), 
+                                                   min_samples_split = int(model_parameters['rf_min_samples_split']), 
+                                                   min_samples_leaf = int(model_parameters['rf_min_samples_leaf']), 
+                                                   bootstrap = str2bool(model_parameters['rf_bootstrap']), 
+                                                   criterion = model_parameters['rf_criterion'], random_state = random_state,
+                                                   min_weight_fraction_leaf = float(model_parameters['rf_min_weight_fraction_leaf']), 
+                                                   max_leaf_nodes = fix_value(model_parameters['rf_max_leaf_nodes'],'int'),
+                                                   min_impurity_decrease = float(model_parameters['rf_min_impurity_decrease'])))
+        ])
+        model.steps.append(['xgboost', XGBRegressor()])
+        """
     elif model_type == "NN":
         model = Pipeline([
-          ('regression', KNeighborsRegressor(n_neighbors = int(model_parameters['nn_n_neighbors']),
+            ('regression', KNeighborsRegressor(n_neighbors = int(model_parameters['nn_n_neighbors']),
                                                  weights = model_parameters['nn_weights'],
                                                  algorithm = model_parameters['nn_algorithm'],
                                                  leaf_size = int(model_parameters['nn_leaf_size']),
@@ -495,36 +533,45 @@ def define_model_regression(model_type, model_parameters, x_header_size, random_
 
     elif model_type == "BR":
         model = Pipeline([
-          ('regression', linear_model.BayesianRidge(n_iter = int(model_parameters['br_n_iter']),
+            ('regression', linear_model.BayesianRidge(n_iter = int(model_parameters['br_n_iter']),
                                                         alpha_1 = float(model_parameters['br_alpha_1']),
                                                         alpha_2 = float(model_parameters['br_alpha_2']),
                                                         tol = float(model_parameters['br_tol']),
                                                         lambda_1 = float(model_parameters['br_lambda_1']),
                                                         lambda_2 = float(model_parameters['br_lambda_2']),
                                                         compute_score = fix_value(model_parameters['br_compute_score'],'bool'),
-                                                        normalize = fix_value(model_parameters['br_normalize'],'bool'),
                                                         fit_intercept = fix_value(model_parameters['br_fit_intercept'],'bool')))
         ])
     elif model_type == "SVM":
         model = Pipeline([
-          ('regression', svm.SVR(kernel = model_parameters['svm_kernel'],
+            ('regression', svm.SVR(kernel = model_parameters['svm_kernel'],
                                      degree = int(model_parameters['svm_degree']),
                                      coef0 = float(model_parameters['svm_coef0']),
                                      tol = float(model_parameters['svm_tol']),
                                      C = float(model_parameters['svm_c']),
                                      gamma = fix_value(model_parameters['svm_gamma'],'float'),
-                                     epsilon = float(model_parameters['svm_epsilon']),
-                                     ))
+                                     epsilon = float(model_parameters['svm_epsilon'])))
         ])
         # 'kr_alpha': '1', 'kr_kernel': 'linear', 'kr_gamma': 'None', 'kr_degree': '3', 'kr_coef0': '1', \
     elif model_type == "KR":
+        # TODO: From empirical observation, KR seems to be broken
         model = Pipeline([
-        ('regression', KernelRidge(alpha = int(model_parameters['kr_alpha']),
+            ('regression', KernelRidge(alpha = int(model_parameters['kr_alpha']),
                                         kernel = fix_value(model_parameters['kr_kernel'],'str'),
                                         gamma = fix_value(model_parameters['kr_gamma'],'str'),
                                         degree = int(model_parameters['kr_degree']),
-                                        coef0 = int(model_parameters['kr_coef0']),))  
+                                        coef0 = int(model_parameters['kr_coef0'])))
         ])
+    elif model_type == "XGB":
+        model = Pipeline([
+            ('regression', XGBRegressor(n_estimators = int(model_parameters['xgb_n_estimators']),
+                                        min_child_weight = int(model_parameters['xgb_min_child_weight']),
+                                        max_depth = int(model_parameters['xgb_max_depth']),
+                                        learning_rate = fix_value(model_parameters['xgb_learning_rate'], float),
+                                        gamma = fix_value(model_parameters['xgb_gamma'], float)))
+        ])
+    else:
+        print("Error: idkrn also")
         
     return model
 
@@ -557,13 +604,17 @@ def rescale_x(scaler_option, x_train):
 
 # In[9]:
 
-def str2bool(v):
-  return v.lower() in ("yes", "true", "t", "1")
+def str2bool(v) -> bool:
+    if isinstance(v, bool):
+        return v
+    if not isinstance(v, str):
+        print("NOT A STRING")
+    return v.lower() in ("yes", "true", "t", "1")
 
 
 def cross_val_predict_net_classifier(model, x_train, y_train, epochs=1000, batch_size=8, verbose = 0, scaler_option='StandardScaler', num_of_folds = 5, num_of_class = 2, force_to_proceed = False, accuracy_threshold = 0.5, fast_tune = True):
     
-    x_trains, y_trains, x_tests, y_tests = split_data(x_train, y_train, num_of_folds=num_of_folds)
+    x_cvtrains, y_cvtrains, x_cvtests, y_cvtests = cv_resample(x_train, y_train, num_of_folds=num_of_folds) # TODO: find out if this is necessary or whether cross_val_score is more appropriate
     
     predictions_total = []
     actual_values_total = []
@@ -572,23 +623,23 @@ def cross_val_predict_net_classifier(model, x_train, y_train, epochs=1000, batch
         print(" Evaluating fold(%d) ..."%(j))
         start_time = time.time()
         
-        x_train_, scale = rescale_x(scaler_option, x_trains[j]) 
+        x_train_, scale = rescale_x(scaler_option, x_cvtrains[j]) 
         
         # This is the change
         if scale is not None:
-            x_test_ = scale.transform(x_tests[j])
+            x_test_ = scale.transform(x_cvtests[j])
         else:
-            x_test_ = x_tests[j]
+            x_test_ = x_cvtests[j]
 
-        dummy_y = keras.utils.to_categorical(y_trains[j], num_classes=num_of_class, dtype='float32')
-        
+        dummy_y = keras.utils.to_categorical(y_cvtrains[j], num_classes=num_of_class, dtype='float32')
+        #print("FITTING")
         history = model.fit(x_train_, dummy_y,
                             batch_size=batch_size,
                             epochs=epochs,
                             verbose=verbose)
         
         predictions  = model.predict_classes(x_test_)
-        actual_values = y_tests[j]
+        actual_values = y_cvtests[j]
         actual_values = actual_values.reshape(actual_values.shape[0],)
         
         accuracy= evaluate_classifier(predictions, actual_values)
@@ -603,7 +654,7 @@ def cross_val_predict_net_classifier(model, x_train, y_train, epochs=1000, batch
         actual_values_total+=list(actual_values)
         
         if fast_tune==True:
-            print("* Fast tuning enabled. so we only test 1 fold, and move on ..")
+            print("* Fast tuning enabled, so we only test 1 fold and move on ...")
             break
 
     return np.array(predictions_total), np.array(actual_values_total)
@@ -611,7 +662,7 @@ def cross_val_predict_net_classifier(model, x_train, y_train, epochs=1000, batch
 
 def cross_val_predict_net(model, x_train, y_train, epochs=1000, batch_size=8, verbose = 0, scaler_option='StandardScaler', num_of_folds = 5, force_to_proceed= False, fast_tune=True):
     
-    x_trains, y_trains, x_tests, y_tests = split_data(x_train, y_train, num_of_folds=num_of_folds)
+    x_cvtrains, y_cvtrains, x_cvtests, y_cvtests = cv_resample(x_train, y_train, num_of_folds=num_of_folds)
     
     predictions_total = []
     actual_values_total = []
@@ -620,21 +671,21 @@ def cross_val_predict_net(model, x_train, y_train, epochs=1000, batch_size=8, ve
         print(" Evaluating fold(%d) ..."%(j))
         start_time = time.time()
         
-        x_train_, scale = rescale_x(scaler_option, x_trains[j]) 
+        x_train_, scale = rescale_x(scaler_option, x_cvtrains[j]) 
 
         # This is the change
         if scale is not None:
-            x_test_ = scale.transform(x_tests[j])
+            x_test_ = scale.transform(x_cvtests[j])
         else:
-            x_test_ = x_tests[j]
-        
-        history = model.fit(x_train_, y_trains[j],
+            x_test_ = x_cvtests[j]
+        #print("FITTING")
+        history = model.fit(x_train_, y_cvtrains[j],
                             batch_size=batch_size,
                             epochs=epochs,
                             verbose=verbose)
 
         predictions  = model.predict(x_test_)
-        actual_values = y_tests[j]
+        actual_values = y_cvtests[j]
         
         MAE, R2 = evaluate(predictions, actual_values)
         print(" MAE = %8.3f R2 = %8.3f ..."%(MAE, R2))
@@ -651,50 +702,60 @@ def cross_val_predict_net(model, x_train, y_train, epochs=1000, batch_size=8, ve
 
     return np.array(predictions_total), np.array(actual_values_total)
 
-def save_parameters(model_parameters, filename):
+def save_parameters(model_parameters, filename) -> None:
+    # TODO: find out if these are parameters or hyperparameters
     f = open(filename,'w')
     f.write("[HYPERPARAMETERS]\n\n")
     for key in model_parameters.keys():
         f.write(str(key)+" = "+str(model_parameters[key])+"\n")
     f.close()
 
-def save_args(model_args,filename):
+def save_args(model_args,filename) -> None:
     f = open(filename,'w')
     f.write("[ARGUMENTS]\n\n")
     for key in model_args.keys():
         f.write(str(key)+" = "+str(model_args[key])+"\n")
     f.close()
 
-def save_metadata(model_args, model_stats,filepath):
-    if path.exists(filepath):
-        meta=pd.read_csv(filepath,index_col=0)
+def save_metadata(model_args, model_stats, project_folder) -> None:
+    """save this session to metadata.csv\n
+    if metadata.csv doesn't exist, create it first"""
+    if path.exists(project_folder / "metadata.csv"):
+        try:
+            meta=pd.read_csv(project_folder / "metadata.csv",index_col=0)
+        except pd.errors.EmptyDataError:
+            meta=pd.DataFrame(columns=["session","model_args","model_stats"])
     else:
         meta=pd.DataFrame(columns=["session","model_args","model_stats"])
-    size=len(meta.index)+1
-    meta=meta.append(pd.DataFrame(data=[[size,model_args,model_stats]],columns=["session","model_args","model_stats"]))
-    meta.to_csv(filepath)
-    return size
+    session_number = get_session(project_folder)
+    meta.loc[len(meta.index)] = [session_number,model_args,model_stats] 
+    meta.to_csv(project_folder / "metadata.csv")
         
 
 def train_and_predict(model, x_train, y_train, scaler_option, num_of_folds=5):
     
     x_train_, scale = rescale_x(scaler_option, x_train)
-    y_train_ = y_train.reshape(y_train.shape[0],)
+    #y_train_ = y_train.reshape(y_train.shape[0],)
+    y_train_ = pd.Series(y_train)
     predictions = cross_val_predict(model, x_train_, y_train_, cv=num_of_folds)
-    actual_values = y_train_
+    actual_values = np.array(y_train_)
     
     return predictions, actual_values
 
-def get_session(project_file):
-    if path.exists(project_file / "metadata.csv"):
-        meta=pd.read_csv(project_file / "metadata.csv")
-    else:
+def get_session(project_folder) -> int:
+    """returns session number (1-index), if there is no metadata.csv file return 1"""
+    if not path.exists(project_folder / "metadata.csv"):
         return 1
-    return len(meta.index)+1
+    try:
+        meta=pd.read_csv(project_folder / "metadata.csv")
+        return len(meta.index) + 1
+    except pd.errors.EmptyDataError:
+        return 1
+    # TODO: error message here for any potential other exceptions (EmptyDataError is normal and isn't bad)
 
 # In[10]:
 
-def train_and_save_net_classifier(model, tag, input_cols, target_col, x_train, y_train, scaler_option, accuracy=None, path_to_save = '.', num_of_folds=5, epochs=100, batch_size=2, num_of_class = 2):
+def train_and_save_net_classifier(model, tag, input_cols, target_col, x_train, y_train, scaler_option, accuracy=None, path_to_save = '.', num_of_folds=5, epochs=100, batch_size=2, num_of_class = 2) -> None:
         
     if accuracy is None:
         
@@ -708,7 +769,7 @@ def train_and_save_net_classifier(model, tag, input_cols, target_col, x_train, y
     dummy_y = keras.utils.to_categorical(y_train, num_classes=num_of_class, dtype='float32')
 
     print('* Training initiated ..')
-    
+    #print("FITTING")
     model.fit(x_train_, dummy_y, epochs=epochs, batch_size=batch_size)
     print('* Training done.')
     
@@ -728,7 +789,7 @@ def train_and_save_net_classifier(model, tag, input_cols, target_col, x_train, y
     output = open(output_file, 'wb')
     pickle.dump(model_dict, output)
 
-def train_and_save_net(model, tag, input_cols, target_col, x_train, y_train, scaler_option, MAE=None, R2=None, path_to_save = '.', num_of_folds=5, epochs=100, batch_size=2):
+def train_and_save_net(model, tag, input_cols, target_col, x_train, y_train, scaler_option, MAE=None, R2=None, path_to_save = '.', num_of_folds=5, epochs=100, batch_size=2) -> None:
         
     if MAE is None or R2 is None:
         
@@ -739,6 +800,7 @@ def train_and_save_net(model, tag, input_cols, target_col, x_train, y_train, sca
 
     x_train_, scale = rescale_x(scaler_option, x_train)
     print('* Training initiated ..')
+    #print("FITTING")
     model.fit(x_train_, y_train, epochs=epochs, batch_size=batch_size)
     print('* Training done.')
     
@@ -759,10 +821,11 @@ def train_and_save_net(model, tag, input_cols, target_col, x_train, y_train, sca
     output = open(output_file, 'wb')
     pickle.dump(model_dict, output)
 
-def train_and_save_classifier(model, tag, model_abbr, input_cols, target_col, x_train, y_train, scaler_option, accuracy=None, path_to_save = '.', num_of_folds=5):
+def train_and_save_classifier(model, tag, model_abbr, input_cols, target_col, x_train, y_train, scaler_option, accuracy=None, path_to_save = '.', num_of_folds=5) -> None:
     
     x_train_, scale = rescale_x(scaler_option, x_train)
-    y_train_ = y_train.reshape(y_train.shape[0],)
+    y_train_ = y_train
+    #y_train_ = y_train.reshape(y_train.shape[0],)
     
     if accuracy is None:
         print('* Model has not been evaluated. Evaluation initiated via %d-fold cross validation'%(num_of_folds))
@@ -773,6 +836,7 @@ def train_and_save_classifier(model, tag, model_abbr, input_cols, target_col, x_
         accuracy = evaluate_classifier(predictions, actual_values)
 
     print('* Training initiated ..')
+    #print("FITTING")
     model.fit(x_train_, y_train_)
     print('* Training done.')
     actual_values = y_train_
@@ -793,10 +857,11 @@ def train_and_save_classifier(model, tag, model_abbr, input_cols, target_col, x_
     output = open(output_file, 'wb')
     pickle.dump(model_dict, output)
 
-def train_and_save(model, tag, model_abbr, input_cols, target_col, x_train, y_train, scaler_option, MAE=None, R2=None, path_to_save = '.', num_of_folds=5):
+def train_and_save(model, tag, model_abbr, input_cols, target_col, x_train, y_train, scaler_option, MAE=None, R2=None, path_to_save = '.', num_of_folds=5) -> None:
     
     x_train_, scale = rescale_x(scaler_option, x_train)
-    y_train_ = y_train.reshape(y_train.shape[0],)
+    y_train_ = y_train
+    #y_train_ = y_train.reshape(y_train.shape[0],)
     
     if MAE is None or R2 is None:
         print('* Model has not been evaluated. Evaluation initiated via %d-fold cross validation'%(num_of_folds))
@@ -807,9 +872,10 @@ def train_and_save(model, tag, model_abbr, input_cols, target_col, x_train, y_tr
         MAE, R2 = evaluate(predictions, actual_values)
 
     print('* Training initiated ..')
+    #print("FITTING")
     model.fit(x_train_, y_train_)
     print('* Training done.')
-    actual_values = y_train_
+    actual_values = np.array(y_train_)
     
     model_dict = {}
     model_dict['tag'] = tag
@@ -828,12 +894,14 @@ def train_and_save(model, tag, model_abbr, input_cols, target_col, x_train, y_tr
     output = open(output_file, 'wb')
     pickle.dump(model_dict, output)
 
-def evaluate_classifier(predictions, actual_values):
+def evaluate_classifier(predictions, actual_values) -> float:
 
     correct = 0
     wrong = 0
     for i in range(0,len(predictions)):
-        if predictions[i]==actual_values[i]:
+        test1 = predictions[i]
+        test2 = actual_values[i]
+        if test1 == test2:
             correct+=1
         else:
             wrong+=1
@@ -853,8 +921,14 @@ def evaluate(predictions, actual_values):
 
     return MAE, R2
 
+def save_comparison(prediction, actual_values, filename) -> None:
+    output = pd.DataFrame({'Predicted Value': prediction, 'Actual Value': actual_values})
+    if type(filename)==str:
+        filename = PurePath(filename)
 
-def save_comparison_chart(predictions, actual_values, filename):
+    if not os.path.exists(filename.parent): os.makedirs(filename.parent)
+    output.to_csv(filename, index=False)
+def save_comparison_chart(predictions, actual_values, filename) -> None:
     plt.close()
     min_val = min(predictions)
     max_val = max(actual_values)
@@ -879,7 +953,7 @@ def save_comparison_chart(predictions, actual_values, filename):
 
 # In[13]:
 
-def add_key_to_params(tag, params):
+def add_key_to_params(tag, params) -> dict:
     tag = tag.lower()
     parameters = {}
     for key in params.keys():
@@ -897,7 +971,7 @@ def hyperparameter_tuning_classifier(tag, x_train, y_train, num_of_folds, scaler
     rf_max_depth.append(None)
     rf_min_samples_split = [int(x) for x in np.linspace(start = 2, stop = 15, num = 20)]
     rf_min_samples_leaf = [int(x) for x in np.linspace(start = 2, stop = 15, num = 20)]
-    rf_bootstrap = ['True', 'False']
+    rf_bootstrap = [True, False]
     rf_criterion = ['gini']
     rf_min_weight_fraction_leaf = [float(x) for x in np.linspace(start = 0, stop = 1.e-5, num = 10)]
     rf_max_leaf_nodes = [2, 5, 10, 50, 100]
@@ -935,7 +1009,6 @@ def hyperparameter_tuning_classifier(tag, x_train, y_train, num_of_folds, scaler
     rg_max_iter = [100, 500, 1000, None]
     rg_tol = [float(x) for x in np.linspace(start = 1.e-5, stop = 1.e-2, num = 20)]
     rg_class_weight = [None,'balanced']
-    rg_normalize = ['True', 'False']
     rg_solver = ['auto', 'svd', 'cholesky', 'lsqr', 'sparse_cg', 'sag', 'saga']
     
     rg_random_grid = {'max_iter': rg_max_iter,
@@ -943,7 +1016,6 @@ def hyperparameter_tuning_classifier(tag, x_train, y_train, num_of_folds, scaler
                 'fit_intercept': rg_fit_intercept,
                 'tol': rg_tol,
                 'class_weight': rg_class_weight,
-                'normalize': rg_normalize,
                 'solver': rg_solver
                 }
 
@@ -975,6 +1047,8 @@ def hyperparameter_tuning_classifier(tag, x_train, y_train, num_of_folds, scaler
     elif tag=='SVM':
         estimator = svm.SVC()
         random_grid = svm_random_grid
+    elif tag == 'XGB':
+        estimator = XGBClassifier()
     else:
         estimator = None
     
@@ -989,8 +1063,8 @@ def hyperparameter_tuning_classifier(tag, x_train, y_train, num_of_folds, scaler
                 random_state=random_state, 
                 n_jobs = multiprocessing.cpu_count())
         x_train_, scale = rescale_x(scaler_option, x_train)
-        y_train_ = y_train.reshape(y_train.shape[0],)
-
+        y_train_ = y_train
+        #print("FITTING")
         model.fit(x_train_, y_train_)
 
         tuned_parameters = add_key_to_params(tag, model.best_params_)
@@ -1006,8 +1080,8 @@ def hyperparameter_tuning(tag, x_train, y_train, num_of_folds, scaler_option, n_
     rf_max_depth.append(None)
     rf_min_samples_split = [int(x) for x in np.linspace(start = 2, stop = 15, num = 20)]
     rf_min_samples_leaf = [int(x) for x in np.linspace(start = 2, stop = 15, num = 20)]
-    rf_bootstrap = ['True', 'False']
-    rf_criterion = ['mse']
+    rf_bootstrap = [True, False]
+    rf_criterion = ['friedman_mse']
     rf_min_weight_fraction_leaf = [float(x) for x in np.linspace(start = 0, stop = 1.e-5, num = 10)]
     rf_max_leaf_nodes = [2, 5, 10, 50, 100]
     rf_min_impurity_decrease = [float(x) for x in np.linspace(start = 0, stop = 1.e-5, num = 10)]
@@ -1059,7 +1133,6 @@ def hyperparameter_tuning(tag, x_train, y_train, num_of_folds, scaler_option, n_
     br_lambda_2 = [float(x) for x in np.linspace(start = 1.e-7, stop = 1.e-4, num = 50)]
     br_compute_score = ['True', 'False']
     br_fit_intercept = ['True', 'False']
-    br_normalize = ['True', 'False']
     
     br_random_grid = {'n_iter': br_n_iter,
                 'alpha_1': br_alpha_1,
@@ -1068,8 +1141,7 @@ def hyperparameter_tuning(tag, x_train, y_train, num_of_folds, scaler_option, n_
                 'lambda_1': br_lambda_1,
                 'lambda_2': br_lambda_2,
                 'compute_score': br_compute_score,
-                'fit_intercept': br_fit_intercept,
-                'normalize':br_normalize}
+                'fit_intercept': br_fit_intercept}
 
     svm_kernel = ['rbf', 'poly','linear','sigmoid']           
     svm_gamma = ['auto', 0.001, 0.01, 0.1, 1]
@@ -1088,6 +1160,30 @@ def hyperparameter_tuning(tag, x_train, y_train, num_of_folds, scaler_option, n_
                 'tol': svm_tol,
                 'C': svm_C,
                 'epsilon': svm_epsilon}
+    
+
+    rf_n_estimators = [int(x) for x in np.linspace(start = 10, stop = 1000, num = 20)]
+    rf_max_features = list(range(1,x_train.shape[1]))
+    rf_max_depth = [int(x) for x in np.linspace(1, 32, 32)]
+    rf_max_depth.append(None)
+    rf_min_samples_split = [int(x) for x in np.linspace(start = 2, stop = 15, num = 20)]
+    rf_min_samples_leaf = [int(x) for x in np.linspace(start = 2, stop = 15, num = 20)]
+    rf_bootstrap = [True, False]
+    rf_criterion = ['friedman_mse']
+    rf_min_weight_fraction_leaf = [float(x) for x in np.linspace(start = 0, stop = 1.e-5, num = 10)]
+    rf_max_leaf_nodes = [2, 5, 10, 50, 100]
+    rf_min_impurity_decrease = [float(x) for x in np.linspace(start = 0, stop = 1.e-5, num = 10)]
+
+    #clf_xgb = XGBClassifier(objective = 'binary:logistic')
+    xgb_random_grid = {'n_estimators': [int(x) for x in np.linspace(start = 10, stop = 1000, num = 20)],
+              'learning_rate': [0.05, 0.10, 0.15, 0.20, 0.25, 0.30],
+              'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+              'max_depth': [3, 4, 5, 6, 8, 10, 12, 15],
+              'colsample_bytree': [0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+              'min_child_weight': [1, 2, 3, 5, 7],
+              'gamma': [0.0, 0.1, 0.2, 0.3, 0.4],
+              'reg_alpha':[1e-5, 1e-2, 0.1, 1, 100]
+             }
 
     if tag=='RF':
         estimator = RandomForestRegressor()
@@ -1104,6 +1200,9 @@ def hyperparameter_tuning(tag, x_train, y_train, num_of_folds, scaler_option, n_
     elif tag=='SVM':
         estimator = svm.SVR()
         random_grid = svm_random_grid
+    elif tag == 'XGB':
+        estimator = XGBRegressor()
+        random_grid = xgb_random_grid
     else:
         estimator = None
     
@@ -1116,10 +1215,11 @@ def hyperparameter_tuning(tag, x_train, y_train, num_of_folds, scaler_option, n_
                 cv = num_of_folds, 
                 verbose=verbose, 
                 random_state=random_state, 
+                error_score='raise',
                 n_jobs = multiprocessing.cpu_count())
         x_train_, scale = rescale_x(scaler_option, x_train)
-        y_train_ = y_train.reshape(y_train.shape[0],)
-
+        y_train_ = y_train
+        #print("FITTING")
         model.fit(x_train_, y_train_)
 
         tuned_parameters = add_key_to_params(tag, model.best_params_)
@@ -1127,25 +1227,20 @@ def hyperparameter_tuning(tag, x_train, y_train, num_of_folds, scaler_option, n_
 
     return tuned_parameters
 
-def split_data(x_train, y_train, num_of_folds=5):
-    
-    num = x_train.shape[0]/int(num_of_folds)
+def cv_resample(x_train, y_train, num_of_folds=5):
+    """takes x, y and resamples it into n folds for cross-validation"""
+    num = x_train.shape[0]/int(num_of_folds) # num of row in each fold
     x_train_parts = []
     y_train_parts = []
     for i in range(0,int(num_of_folds)):
-        start_idx = int(i*num+1) -1
-        end_idx = int(num*(i+1))
-        if i==int(num_of_folds)-1:
-            x_train_parts.append(x_train[start_idx:])
-            y_train_parts.append(y_train[start_idx:])
-        else:
-            x_train_parts.append(x_train[start_idx:end_idx])
-            y_train_parts.append(y_train[start_idx:end_idx])
+        start_idx = int(i * num)
+        end_idx = min(int(i * (num + 1)), x_train.shape[0])
+        x_train_parts.append(x_train[start_idx: end_idx])
 
-    x_trains = []
-    y_trains = []
-    x_tests = []
-    y_tests = []
+    x_cvtrains = []
+    y_cvtrains = []
+    x_cvtests = []
+    y_cvtests = []
     
     for i in range(0, num_of_folds):
         x_test = x_train_parts[i]
@@ -1153,16 +1248,16 @@ def split_data(x_train, y_train, num_of_folds=5):
         x_train = []
         y_train = []
         for j in range(0, num_of_folds):
-            if j!=i:
+            if j != i:
                 x_train+=list(x_train_parts[j])
                 y_train+=list(y_train_parts[j])
         
-        x_trains.append(np.array(x_train))
-        y_trains.append(np.array(y_train))
-        x_tests.append(np.array(x_test))
-        y_tests.append(np.array(y_test))
+        x_cvtrains.append(np.array(x_train))
+        y_cvtrains.append(np.array(y_train))
+        x_cvtests.append(np.array(x_test))
+        y_cvtests.append(np.array(y_test))
         
-    return x_trains, y_trains, x_tests, y_tests
+    return x_cvtrains, y_cvtrains, x_cvtests, y_cvtests
 
 def net_define(params = [8, 8, 8], layer_n = 3, input_size = 16, dropout=0, l_2=0.01, optimizer='adam', random_state = 0):
     
@@ -1202,14 +1297,15 @@ def net_define_classifier(params = [8, 8, 8], layer_n = 3, num_of_class = 2, inp
     model.add(Dense(num_of_class, activation = 'softmax'))
 
     model.compile(loss='categorical_crossentropy',
-                  optimizer=optimizer, metrics=['accuracy'])
+                  optimizfer=optimizer, metrics=['accuracy'])
     
     return model
 
-def evaluate_net(model, x_train, y_train, x_test, y_test, epochs=1000, batch_size=8, verbose = 0):
-    if optimizer is None:
+def evaluate_net(model, x_train, y_train, x_test, y_test, epochs=1000, batch_size=8, verbose = 0) -> tuple:
+    # TODO: find out if there should be a seperate evaluate_net_classifier
+    if optimizer is None: # TODO: find out what this does, because optimizer is never set, so this is always true. Should it take a default parameter? Also this function is never called
         optimizer = 'adam'
-    
+    #print("FITTING")
     history = model.fit(x_train, y_train,
                         batch_size=batch_size,
                         epochs=epochs,
@@ -1335,7 +1431,7 @@ def net_tuning_classifier(x_train, y_train, num_of_class = 2, tries = 10, lr = N
     print(" -- DONE --")
 
 def net_tuning(x_train, y_train, tries = 10, lr = None, layer = None, params=None, epochs=None, batch_size=None, dropout=None, l_2 = None, neuron_max=[64, 64, 64], batch_size_max=32, layer_min=1, layer_max=3, dropout_max=0.2, scaler_option='StandardScaler', default_neuron_max=32, checkpoint = None, num_of_folds=5, fast_tune = True, random_state = 0):
-    
+
     tuned_parameters = {}
     if layer is not None:
         
@@ -1458,4 +1554,3 @@ def net_tuning(x_train, y_train, tries = 10, lr = None, layer = None, params=Non
     return tuned_parameters
 
     print(" -- DONE --")
-    

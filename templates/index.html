@@ -7,8 +7,8 @@
   <link rel="shortcut icon" href="#">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
-  <title>ASCENDS: Advanced data SCiENce toolkit for Non-Data Scientists</title>
-
+  <title>ASCENDS: Advanced data SCiEnce toolkit for Non-Data Scientists</title>
+  <!-- index -->
   <!-- Bootstrap -->
   <!-- Latest compiled and minified CSS -->
   <link rel="stylesheet" href="static/dist/bootstrap/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u"
@@ -121,12 +121,12 @@
   </script>
 
   <script>
-
+// TODO: cols_types isn't used, for now comment it out, eventually get rid of it (if needed)
     table_loaded = false; 
     input_cols = [];
     target_col = null;
     path_to_data = '';
-    cols_type = {};
+    //cols_type = {};
     corr_chart_rows = null;
     
     $(document).ready(function () {
@@ -411,13 +411,20 @@
                       attr_content+=`
                       <li class="list-group-item"><p class="text-right"><b>`+key+`</b> <span class="label label-primary">Number</span></p></li>
                     `;
-                    cols_type[key] ='Number';
+                    //cols_type[key] ='Number';
                     }
                     else {
                       attr_content+=`
-                      <li class="list-group-item"><p class="text-right"><b>`+key+`</b> <span class="label label-danger">String</span></p></li>
+                      <li class="list-group-item"><p class="text-right"><b>`+ key + `</b> <span class="label label-danger">String</span></p>
+                      <button id="select-all" data-toggle="tooltip" title="Select all" type="button"
+                      class="btn btn-default btn-sm"><li class="string-option">Test</li>
+                      </button>
+                      <button id="select-all" data-toggle="tooltip" title="Select all" type="button"
+                      class="btn btn-default btn-sm"><li class="string-option">asdf
+                      </button>
+                      </li>
                     `;
-                    cols_type[key] ='String';
+                    //cols_type[key] ='String';
                     }
                 
                 }
@@ -654,7 +661,7 @@
         <div class="modal-body">
           <form id="load-file-form">
             <div class="form-group">
-              <label for="load-csv">File input</label>
+              <label for="load-file-form">File input</label>
               <input type="file" name="input-csv"></input>
               <p class="help-block">Please select a CSV file.</p>
               <button id="load-button" class="btn btn-default" type="submit">OK</button>

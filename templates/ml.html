@@ -7,8 +7,8 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
-  <title>ASCENDS: Advanced data SCiENce toolkit for Non-Data Scientists</title>
-
+  <title>ASCENDS: Advanced data SCiEnce toolkit for Non-Data Scientists</title>
+  <!-- ml -->
   <!-- Bootstrap -->
   <!-- Latest compiled and minified CSS -->
   <link rel="stylesheet" href="static/dist/bootstrap/css/bootstrap.min.css"
@@ -28,7 +28,7 @@
     table_loaded = false;
     target_col = null;
     path_to_data = '';
-    cols_type = {};
+    //cols_type = {};
     corr_chart_rows = null;
     hist_chart_rows = [];
     global_MAE = -1;
@@ -81,25 +81,26 @@
 
         success: function (jsonResponse) {
           var objresponse = JSON.parse(jsonResponse);
-
-          info = `
-              <div class="alert alert-info" role="alert">
-                        Algorithm = `+ objresponse['model_abbr'] + `<br>
-                        Input Columns = `+ objresponse['input_cols'] + `<br>
-                        Target Column = `+ objresponse['target_col'] + `<br>
-                        MAE = `+ objresponse['MAE'] + `<br>
-                        R2 = `+ objresponse['R2'] + `<br>
-                      </div>        
-              `
+          if (objresponse['error_msg'] != 'None')
+            alert(`Something went wrong.\nPython error: ${objresponse['error_msg']}`)
+          info =  `
+                  <div class="alert alert-info" role="alert">
+                  Algorithm = ${objresponse['model_abbr']}<br>
+                  Input Columns = ${objresponse['input_cols']}<br>
+                  Target Column = ${objresponse['target_col']}<br>
+                  MAE = ${objresponse['MAE']}<br>
+                  R2 = ${objresponse['R2']}<br>
+                  </div>        
+                  `
           $('#model-info').html(info);
 
           $("body").css("cursor", "default");
           $("body").find("*").removeAttr("disabled");
-
         },
 
-        error: function (jsonResponse) {
-          alert('Something went wrong.');
+        error: function (XHR, textStatus, errorThrown) {
+          let msg = `Something went wrong.\n ${textStatus}: ${errorThrown}`
+          alert(msg);
         }
 
       });
@@ -128,11 +129,13 @@
         data: dataToSend,
         processData: false,
         contentType: false,
-
+        
         success: function (jsonResponse) {
           var objresponse = JSON.parse(jsonResponse);
+          if (objresponse['error_msg'] != 'None')
+              alert(`Something went wrong.\nPython error: ${objresponse['error_msg']}`)
           var model_files = objresponse["model_files"];
-
+          
           for (let item of model_files) {
             attr_content = `
                     <li class="list-group-item"><p class="text-right"><b>`+ item + `</b> </li>
@@ -164,9 +167,9 @@
           $("body").find("*").removeAttr("disabled");
 
         },
-
-        error: function (jsonResponse) {
-          alert('Something went wrong.');
+        error: function (XHR, textStatus, errorThrown) {
+          let msg = `Something went wrong.\n ${textStatus}: ${errorThrown}`
+          alert(msg);
         }
 
       });
@@ -204,9 +207,11 @@
         data: dataToSend,
         processData: false,
         contentType: false,
-
+        
         success: function (jsonResponse) {
           var objresponse = JSON.parse(jsonResponse);
+          if (objresponse['error_msg'] != 'None')
+              alert(`Something went wrong.\nPython error: ${objresponse['error_msg']}`)
           var preset_files = objresponse["preset_files"];
 
           $("#preset-picker").html('<option value="default">Default Hyper Parameters</option>');
@@ -219,11 +224,10 @@
           $("body").find("*").removeAttr("disabled");
 
         },
-
-        error: function (jsonResponse) {
-          alert('Something went wrong.');
+        error: function (XHR, textStatus, errorThrown) {
+          let msg = `Something went wrong.\n ${textStatus}: ${errorThrown}`
+          alert(msg);
         }
-
       });
     }
 
@@ -247,17 +251,19 @@
 
         $("body").find("*").attr("disabled", "disabled");
         $("body").css("cursor", "progress");
-
+        
         $.ajax({
-
+          
           url: '/delete_model',
           type: 'POST',
           data: dataToSend,
           processData: false,
           contentType: false,
-
+          
           success: function (jsonResponse) {
             var objresponse = JSON.parse(jsonResponse);
+            if (objresponse['error_msg'] != 'None')
+              alert(`Something went wrong.\nPython error: ${objresponse['error_msg']}`)
             refresh_model_file_list();
 
             $("body").css("cursor", "default");
@@ -265,10 +271,10 @@
 
           },
 
-          error: function (jsonResponse) {
-            alert('Something went wrong.');
+          error: function (XHR, textStatus, errorThrown) {
+            let msg = `Something went wrong.\n ${textStatus}: ${errorThrown}`
+            alert(msg);
           }
-
         });
       });
 
@@ -282,7 +288,7 @@
         }
         else {
           $('#modal-title').html('Warning');
-          $('#modal-content').html('<div class="alert alert-danger" role="alert"> ' + 'Please perform test first.' + '</div>');
+          $('#modal-content').html('<div class="alert alert-danger" role="alert"> ' + 'Nothing to add to history. Please perform test first.' + '</div>');
           $('#my-modal').modal('show');
         }
 
@@ -290,7 +296,7 @@
 
       $('#load-data').click(function (event) {
         $('#modal-title').html('Warning');
-        $('#modal-content').html('<div class="alert alert-danger" role="alert"> ' + 'Please open a file in the feature selection tab.' + '</div>');
+        $('#modal-content').html('<div class="alert alert-danger" role="alert"> ' + 'No data to load. Please open a file in the feature selection tab.' + '</div>');
         $('#my-modal').modal('show');
       });
 
@@ -309,6 +315,17 @@
           input_cols = input_cols.split(",");
         } catch (err) {
           input_cols = [];
+        }
+      }
+      ordinal_cols = obj['ordinal_cols'];
+      if (ordinal_cols == '') {
+        ordinal_cols = [];
+      }
+      else {
+        try {
+          ordinal_cols = ordinal_cols.split(",");
+        } catch (err) {
+          ordinal_cols = [];
         }
       }
       target_col = obj['target_col'];
@@ -359,15 +376,17 @@
         $("body").css("cursor", "progress");
 
         $.ajax({
-
+          
           url: '/predict_ml',
           type: 'POST',
           data: dataToSend,
           processData: false,
           contentType: false,
-
+          
           success: function (jsonResponse) {
             var objresponse = JSON.parse(jsonResponse);
+            if (objresponse['error_msg'] != 'None')
+              alert(`Something went wrong.\nPython error: ${objresponse['error_msg']}`)
             var date_time_str = new Date().getTime()
             alert(objresponse['prediction_result']);
 
@@ -388,10 +407,10 @@
 
           },
 
-          error: function (jsonResponse) {
-            alert('Something went wrong.');
+          error: function (XHR, textStatus, errorThrown) {
+            let msg = `Something went wrong.\n ${textStatus}: ${errorThrown}`
+            alert(msg);
           }
-
         });
       });
 
@@ -417,6 +436,7 @@
           {
             input_cols: input_cols,
             target_col: target_col,
+            ordinal_cols: ordinal_cols,
             path_to_data: path_to_data,
             model_abbr: val,
             scaler: scaler,
@@ -439,16 +459,20 @@
             data: dataToSend,
             processData: false,
             contentType: false,
-
+            
             success: function (jsonResponse) {
               var objresponse = JSON.parse(jsonResponse);
-
+              if (objresponse['error_msg'] != 'None')
+                alert(`Something went wrong.\nPython error: ${objresponse['error_msg']}`)
+              
               refresh_model_file_list();
 
             },
 
-            error: function (jsonResponse) {
-              alert('Something went wrong.');
+            
+            error: function (XHR, textStatus, errorThrown) {
+              let msg = `Something went wrong.\n ${textStatus}: ${errorThrown}`
+              alert(msg);
             }
 
           });
@@ -458,13 +482,67 @@
         }
         else {
           $('#modal-title').html('Warning');
-          $('#modal-content').html('<div class="alert alert-danger" role="alert"> ' + 'Please perform test first.' + '</div>');
+          $('#modal-content').html('<div class="alert alert-danger" role="alert"> ' + 'No model to save. Please perform test first.' + '</div>');
           $('#my-modal').modal('show');
         }
 
       }
       );
-
+      $('#save-correlation').click(function (event) {
+        if (global_MAE == -1) {
+          $('#modal-title').html('Warning');
+          $('#modal-content').html('<div class="alert alert-danger" role="alert"> ' + 'No correlation to save. Please perform test first.' + '</div>');
+          $('#my-modal').modal('show');
+          return;
+        }
+        var val = $("#algorithm-picker option:selected").val();
+        var preset = $("#preset-picker option:selected").val();
+        var scaler = $("#scaler-picker option:selected").val();
+        var num_fold = $("#num-fold").val();
+        var tag = $("#tag-name").val();
+        var num_fold_test = Number(num_fold);
+        if (num_fold_test > 10 || num_fold_test <= 1 || isNaN(num_fold_test)) {
+          $('#modal-title').html('Error');
+          $('#modal-content').html('<div class="alert alert-danger" role="alert"> ' + 'Please set k-folds (2-10) and # of test (1-10) properly.' + '</div>');
+          $('#my-modal').modal('show');
+          return;
+        }
+        var data =
+        {
+          input_cols: input_cols,
+          target_col: target_col,
+          path_to_data: path_to_data,
+          model_abbr: val,
+          scaler: scaler,
+          num_fold: num_fold,
+          tag: tag,
+          MAE: global_MAE,
+          R2: global_R2,
+          preset: preset
+        };
+        var dataToSend = JSON.stringify(data);
+        $("body").find("*").attr("disabled", "disabled");
+        $("body").css("cursor", "progress");
+        $.ajax({
+          url: '/save_correlation',
+          type: 'POST',
+          data: dataToSend,
+          processData: false,
+          contentType: false,
+          success: function (jsonResponse) {
+            var objresponse = JSON.parse(jsonResponse);
+            if (objresponse['error_msg'] != 'None')
+              alert(`Something went wrong.\nPython error: ${objresponse['error_msg']}`)
+            refresh_model_file_list();
+          },
+          error: function (XHR, textStatus, errorThrown) {
+            let msg = `Something went wrong.\n ${textStatus}: ${errorThrown}`
+            alert(msg);
+          }
+        });
+        $("body").css("cursor", "default");
+        $("body").find("*").removeAttr("disabled");
+      });
 
       $('#ml-analysis').click(function (event) {
 
@@ -487,6 +565,7 @@
         {
           input_cols: input_cols,
           target_col: target_col,
+          ordinal_cols: ordinal_cols,
           path_to_data: path_to_data,
           model_abbr: val,
           scaler: scaler,
@@ -506,20 +585,23 @@
           data: dataToSend,
           processData: false,
           contentType: false,
-
+          
           success: function (jsonResponse) {
             var objresponse = JSON.parse(jsonResponse);
+            if (objresponse['error_msg'] != 'None')
+              alert(`Something went wrong.\nPython error: ${objresponse['error_msg']}`)
             var date_time_str = new Date().getTime()
 
             var MAE = objresponse["MAE"];
             var R2 = objresponse["R2"];
+            var accuracy = objresponse["accuracy"];
             var input_cols = objresponse["input_cols"];
             var target_col = objresponse["target_col"];
             var model_abbr = objresponse["model_abbr"];
             var num_fold = objresponse["num_fold"];
             var scaler = objresponse["scaler"];
 
-            if (MAE == -1) {
+            if (MAE == -1 && accuracy == -1) {
               info = `
               <br><br>
               <div class="alert alert-info" role="alert">
@@ -527,18 +609,34 @@
               </div>
               `
             } else {
-              info = `
-              <br><br>
-              <div class="alert alert-info" role="alert">
-                        MAE = <strong>`+ MAE.toFixed(3) + `</strong><br>
-                        R2 = <strong>`+ R2.toFixed(3) + `</strong><br>
-                        Algorithm = `+ model_abbr + `<br>
-                        Scaler = `+ scaler + `<br>
-                        Input Columns = `+ input_cols + `<br>
-                        Target Column = `+ target_col + `<br>
-                        Number of folds = `+ num_fold + `<br>
-                      </div>        
-              `
+              if (MAE == -1) {
+                info = `
+                <br><br>
+                <div class="alert alert-info" role="alert">
+                  Accuracy = <strong>`+ accuracy.toFixed(3) + `</strong><br>
+                  Algorithm = `+ model_abbr + `<br>
+                  Scaler = `+ scaler + `<br>
+                  Input Columns = `+ input_cols + `<br>
+                  Target Column = `+ target_col + `<br>
+                  Number of folds = `+ num_fold + `<br>
+                  </div>        
+                  `
+              }
+              else {
+
+                info = `
+                <br><br>
+                <div class="alert alert-info" role="alert">
+                  MAE = <strong>`+ MAE.toFixed(3) + `</strong><br>
+                  R2 = <strong>`+ R2.toFixed(3) + `</strong><br>
+                  Algorithm = `+ model_abbr + `<br>
+                  Scaler = `+ scaler + `<br>
+                  Input Columns = `+ input_cols + `<br>
+                  Target Column = `+ target_col + `<br>
+                  Number of folds = `+ num_fold + `<br>
+                  </div>        
+                  `
+              }
             }
 
             global_MAE = MAE;
@@ -546,7 +644,7 @@
 
             $('#MAE').html(info);
             $('#tag-name').val(model_abbr + "-" + date_time_str);
-            if (MAE != -1) {
+            if (MAE != -1 || accuracy != -1) {
               $("#mae-chart").attr("src", "static/output/ml/ml_result.png?" + date_time_str);
             } else {
               $("#mae-chart").attr("src", "static/img/error.png");
@@ -555,11 +653,10 @@
             $("body").find("*").removeAttr("disabled");
 
           },
-
-          error: function (jsonResponse) {
-            alert('Something went wrong.');
+          error: function (XHR, textStatus, errorThrown) {
+            let msg = `Something went wrong.\n ${textStatus}: ${errorThrown}`
+            alert(msg);
           }
-
         });
       });
 
@@ -588,6 +685,7 @@
         {
           input_cols: input_cols,
           target_col: target_col,
+          ordinal_cols: ordinal_cols,
           path_to_data: path_to_data,
           model_abbr: val,
           scaler: scaler,
@@ -610,7 +708,10 @@
 
           success: function (jsonResponse) {
             var objresponse = JSON.parse(jsonResponse);
-            alert('Tuning Completed. Please select the parameter file: '+objresponse['output']);
+            if (objresponse['error_msg'] != 'None')
+              alert(`Something went wrong.\nPython error: ${objresponse['error_msg']}`)
+            else
+              alert('Tuning Completed. Please select the parameter file: '+objresponse['output']);
             load_preset_options();
             $("body").css("cursor", "default");
             $("body").find("*").removeAttr("disabled");
@@ -825,6 +926,7 @@
                     <option value="BR">Bayesian Ridge Regression</option>
                     <option value="NET">Neural Network</option>
                     <option value="SVM">Support Vector Machine</option>
+                    <option value="XGB">Extreme Gradient Boosting</option>
                   </select>
                   <label for="scaler-picker">Scaler</label>
                   <select id="scaler-picker" class="form-control">
@@ -872,6 +974,10 @@
                     class="btn btn-default btn-sm">
                     <span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Save Model
                   </button>
+                  <button id="save-correlation" data-toggle="tooltip" title="Save Correlation" type="button"
+                    class="btn btn-default btn-sm">
+                    <span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Save Correlation
+                  </button>
                 </div>
               </form>
             </div>
@@ -881,7 +987,7 @@
               <div class="row">
                 <div class="col-sm-12">
                   <div class="col-sm-6">
-                    <img id="mae-chart" height="380">
+                    <img id="mae-chart" height="300">
                   </div>
                   <div class="col-sm-6">
                     <div id="MAE">
@@ -894,7 +1000,6 @@
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </div>
@@ -908,6 +1013,10 @@
         <div class="panel-heading">
           <h3 class="panel-title">Test History</h3>
         </div>
+        <button id="save-history" data-toggle="tooltip" title="Save Predictions" type="button"
+          class="btn btn-default btn-sm">
+          <span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Save History
+        </button>
         <div class="panel-body" style="min-height: 400px; max-height: 400px;">
           <div id="history-chart">
           </div>
@@ -1005,7 +1114,7 @@
         <div class="modal-body">
           <form id="load-file-form">
             <div class="form-group">
-              <label for="load-csv">File input</label>
+              <label for="load-file-form">File input</label>
               <input type="file" name="input-csv"></input>
               <p class="help-block">Please select a CSV file.</p>
               <button id="load-button" class="btn btn-default" type="submit">OK</button>

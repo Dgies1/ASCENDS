@@ -7,8 +7,8 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
-    <title>ASCENDS: Advanced data SCiENce toolkit for Non-Data Scientists</title>
-
+    <title>ASCENDS: Advanced data SCiEnce toolkit for Non-Data Scientists</title>
+    <!-- predict -->
     <!-- Bootstrap -->
     <!-- Latest compiled and minified CSS -->
     <link rel="stylesheet" href="static/dist/bootstrap/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u"
@@ -159,7 +159,7 @@
         input_cols = [];
         target_col = null;
         path_to_data = '';
-        cols_type = {};
+        //cols_type = {};
         corr_chart_rows = null;
 
         $(document).ready(function () {
@@ -407,7 +407,7 @@
 
             $('#go-corr').click(function (event) {
                 // changing this to POST may be required for better security
-                window.location = "/corr_analysis?path_to_data=" + path_to_data + "&target_col=" + target_col + "&input_cols=" + input_cols;
+                window.location = "/feature_analysis?path_to_data=" + path_to_data + "&target_col=" + target_col + "&input_cols=" + input_cols;
             });
 
             $('#go-ml-analysis').click(function (event) {
@@ -539,7 +539,7 @@
             <div class="modal-body">
                 <form id="load-file-form">
                     <div class="form-group">
-                        <label for="load-csv">File input</label>
+                        <label for="load-file-form">File input</label>
                         <input type="file" name="input-csv"></input>
                         <p class="help-block">Please select a CSV file.</p>
                         <button id="load-button" class="btn btn-default" type="submit">OK</button>

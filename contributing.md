@@ -1,6 +1,6 @@
 It’s so great that you want to contribute! There are several ways to contribute.
 
-## How to contribute to ascends-toolkit: ASCENDS: Advanced data SCiENce toolkit for Non-Data Scientists
+## How to contribute to ascends-toolkit: ASCENDS: Advanced data SCiEnce toolkit for Non-Data Scientists
 
 #### **Did you find a bug?**
 

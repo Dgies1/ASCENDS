@@ -2,12 +2,12 @@
 
 rf_n_estimators = 62
 rf_min_weight_fraction_leaf = 5.555555555555556e-06
-rf_min_samples_split = 3
-rf_min_samples_leaf = 5
-rf_min_impurity_decrease = 7.77777777777778e-06
-rf_max_leaf_nodes = 5
-rf_max_features = 8
-rf_max_depth = 11
-rf_criterion = mse
+rf_min_samples_split = 10
+rf_min_samples_leaf = 2
+rf_min_impurity_decrease = 4.444444444444445e-06
+rf_max_leaf_nodes = 50
+rf_max_features = 3
+rf_max_depth = 28
+rf_criterion = gini
 rf_bootstrap = False
 scaler_option = AutoLoad

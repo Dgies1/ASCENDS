@@ -61,7 +61,7 @@ def main(args):
 
     input_cols = model_dict['input_cols']
     data = data[input_cols]
-
+    a = type(data)
 
     try:
         scaler = model_dict['fitted_scaler_x']
@@ -121,7 +121,7 @@ def main(args):
 
 if __name__=="__main__":
 
-    print("\n * ASCENDS: Advanced data SCiENce toolkit for Non-Data Scientists ")
+    print("\n * ASCENDS: Advanced data SCiEnce toolkit for Non-Data Scientists ")
     print(" * ML model predictor \n")
 
     parser = argparse.ArgumentParser()

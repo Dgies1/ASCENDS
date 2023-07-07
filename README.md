@@ -1,6 +1,6 @@
 ![](./logo/ascends.png)
 
-# ASCENDS: Advanced data SCiENce toolkit for Non-Data Scientists
+# ASCENDS: Advanced data SCiEnce toolkit for Non-Data Scientists
 
 # What is it for?
 
@@ -283,7 +283,7 @@ Then you will see, the following result.
 $     python train.py c data/iris.csv output/iris_project Name --mapping "{'Name': {'Iris-setosa':0, 'Iris-versicolor':1, 'Iris-virginica':2}}" --num_of_class 3
 Using TensorFlow backend.
 
- * ASCENDS: Advanced data SCiENce toolkit for Non-Data Scientists 
+ * ASCENDS: Advanced data SCiEnce toolkit for Non-Data Scientists 
  * ML model trainer 
 
  programmed by Matt Sangkeun Lee (lees4@ornl.gov) 
@@ -386,7 +386,7 @@ The following shows how to train a regression model using ASCENDS to predict `me
 $ python train.py r data/BostonHousing.csv output/boston_proj medv
 Using TensorFlow backend.
 
- * ASCENDS: Advanced data SCiENce toolkit for Non-Data Scientists 
+ * ASCENDS: Advanced data SCiEnce toolkit for Non-Data Scientists 
  * ML model trainer 
 
  programmed by Matt Sangkeun Lee (lees4@ornl.gov) 
@@ -444,7 +444,7 @@ Using TensorFlow backend.
 
 ```
 (ascends) $ python ascends_server.py 
- * ASCENDS: Advanced data SCiENce toolkit for Non-Data Scientists 
+ * ASCENDS: Advanced data SCiEnce toolkit for Non-Data Scientists 
  * Web Server ver 0.1 
 
  programmed by Matt Sangkeun Lee (lees4@ornl.gov) 

@@ -137,10 +137,10 @@ def main(args):
         num_of_folds = int(args.num_of_folds)
         test = asc.str2bool(args.test)
         mapping: dict = ast.literal_eval(args.mapping)
-        if (args.ordinal is not None):
-            ordinal: list = ast.literal_eval(args.ordinal)
+        if (args.ordinal_cols is not None):
+            ordinal_cols: list = ast.literal_eval(args.ordinal_cols)
         else:
-            ordinal = None
+            ordinal_cols = None
         project_folder = PurePath(args.project_folder)
         save_test_chart = asc.str2bool(args.save_test_chart)
         save_auto_tune = asc.str2bool(args.save_auto_tune)
@@ -186,7 +186,7 @@ def main(args):
         print(" Loading data from: %s"%(csv_file))
         print(" Columns to ignore: %s"%(cols_to_remove))
                 
-        data_df, x_train, x_test, y_train, y_test, header_x, header_y = asc.data_load_shuffle(csv_file, train_cols, cols_to_remove, target_col, map_all = mapping, ordinal = ordinal, random_state = random_state)
+        data_df, x_train, x_test, y_train, y_test, header_x, header_y = asc.data_load_shuffle(csv_file, train_cols, cols_to_remove, target_col, map_all = mapping, ordinal_cols = ordinal_cols, random_state = random_state)
         print(" Input columns: %s" %(header_x))
         print(" Target column: %s" %(target_col))
 
@@ -230,7 +230,7 @@ def main(args):
         
         print(" Reloading the data using the selected features : ", train_cols," by criteron ", feature_selection, "top_k=", num_of_features)
         
-        data_df, x_train, x_test, y_train, y_test, header_x, header_y = asc.data_load_shuffle(csv_file, train_cols, cols_to_remove, target_col, map_all = mapping, ordinal = ordinal, random_state = random_state)
+        data_df, x_train, x_test, y_train, y_test, header_x, header_y = asc.data_load_shuffle(csv_file, train_cols, cols_to_remove, target_col, map_all = mapping, ordinal_cols = ordinal_cols, random_state = random_state)
         #x_train, x_test, y_train, y_test = train_test_split(x, y) # TODO: find out if this is necessary
 
         print(" Input columns: %s" %(header_x))
@@ -493,7 +493,7 @@ if __name__ == "__main__":
     parser.add_argument( "--save_test_csv", choices = ['True','False'], default = 'False')
     parser.add_argument( "--save_metadata", choices = ['True','False'], default = 'True')
     parser.add_argument( "--mapping", help = "Mapping string value to numbers", default = '{}')
-    parser.add_argument( "--ordinal", help = "Categorical raining columns to be ordinally encoded, as opposed to the default one-hot encoding", default = None)
+    parser.add_argument( "--ordinal_cols", help = "Categorical raining columns to be ordinally encoded, as opposed to the default one-hot encoding", default = None)
     parser.add_argument( "--save_auto_tune", choices = ['True','False'], default = 'True')
     parser.add_argument( "--auto_tune_iter", default = '1000')
     parser.add_argument( "--train_cols", help = "Input columns for training", nargs = '+') # TODO: make sure that train_cols and ignore_cols aren't used at the same time

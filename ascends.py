@@ -179,8 +179,9 @@ def data_load_shuffle(csv_file: PurePath, train_cols: list, cols_to_remove: list
             data = data.join(one_hot)
     y_header = target_col
     y = data[y_header]
-    data = data.drop(y_header, axis = 1)
+    #data = data.drop(y_header, axis = 1)
     x_headers = list(data.columns)
+    x_headers.remove(target_col)
     x = data[x_headers]
     x_train, x_test, y_train, y_test = train_test_split(x, y)
     # TODO: decide whether we want to split

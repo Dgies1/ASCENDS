@@ -17,7 +17,7 @@ function set_selectable() {
     });
 }
 
-function load_data() {
+function load_data_ml() {
 
   var data =
     {
@@ -178,7 +178,7 @@ function load_data() {
   }
 };
 
-function load_data_to_table() {
+function load_data_index() {
 
   var data =
     {
@@ -258,10 +258,10 @@ function load_data_to_table() {
                       <li class="list-group-item"><p class="text-right"><b>`+ key + `</b> <span class="label label-danger">String</span></p>
                       <button id="select-all" data-toggle="tooltip" title="Select all" type="button"
                       class="btn btn-default btn-sm">
-                      Test
+                      Test1
                       </button>
                       <button id="select-all" data-toggle="tooltip" title="Select all" type="button"
-                      class="btn btn-default btn-sm">asdf
+                      class="btn btn-default btn-sm">Test2
                     </button></li>
                     `;
             //cols_type[key] = 'String';
@@ -482,7 +482,7 @@ function add_to_input() {
           $('#input-cols').html('');
         }
         else {
-          console.log("ERROR: unrecognized input_col_type");
+          console.log("ERROR: unrecognized input_col_type, ", input_col_type);
         }
       }; // TODO: if encoded col is already in input, make it so you can input it again with a different encoding
 

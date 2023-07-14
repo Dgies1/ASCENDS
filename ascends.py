@@ -1132,8 +1132,8 @@ def hyperparameter_tuning(tag, x_train, y_train, num_of_folds, scaler_option, n_
     br_tol = [float(x) for x in np.linspace(start = 1.e-2, stop = 1.e-4, num = 50)]
     br_lambda_1 = [float(x) for x in np.linspace(start = 1.e-7, stop = 1.e-4, num = 50)]
     br_lambda_2 = [float(x) for x in np.linspace(start = 1.e-7, stop = 1.e-4, num = 50)]
-    br_compute_score = ['True', 'False']
-    br_fit_intercept = ['True', 'False']
+    br_compute_score = [True, False]
+    br_fit_intercept = [True, False]
     
     br_random_grid = {'n_iter': br_n_iter,
                 'alpha_1': br_alpha_1,

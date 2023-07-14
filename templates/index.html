@@ -150,10 +150,21 @@
           input_cols = [];
         }
       }
+      ordinal_cols = obj['ordinal_cols'];
+      if (ordinal_cols == '') {
+        ordinal_cols = [];
+      }
+      else {
+        try {
+          ordinal_cols = ordinal_cols.split(",");
+        } catch (err) {
+          ordinal_cols = [];
+        }
+      }
       target_col = obj['target_col'];
 
       if(path_to_data!=null&&path_to_data!=''){
-        load_data_to_table();
+        load_data_ml();
       }
       
       $('#go-predict').click(function (event) {
@@ -300,10 +311,12 @@
       });
 
       $('#add-to-target').click(function (event) {
+        console.log("add to target")
         add_to_target();
       });
 
       $('#add-to-input').click(function (event) {
+        console.log("add to input")
         add_to_input();
       });
 
@@ -331,7 +344,18 @@
 
       $('#load-data').click(function (event) {
         $('#open-file-modal').modal('show')  ;
-      });
+        ordinal_cols = obj['ordinal_cols'];
+        if (ordinal_cols == '') {
+          ordinal_cols = [];
+        }
+        else {
+          try {
+            ordinal_cols = ordinal_cols.split(",");
+          } catch (err) {
+            ordinal_cols = [];
+          }
+        }
+        });
 
       $( '#load-file-form' )
         .submit( function( e ) {
@@ -403,32 +427,79 @@
                 //alert('hi');
 
                 var if_number = objresponse['if_number'];
-                
-                attr_content = '<ul class="list-group" id="table-attrs-list">'
-                for(var key in if_number)
-                {
-                    if(if_number[key]==true){
-                      attr_content+=`
-                      <li class="list-group-item"><p class="text-right"><b>`+key+`</b> <span class="label label-primary">Number</span></p></li>
-                    `;
-                    //cols_type[key] ='Number';
-                    }
-                    else {
-                      attr_content+=`
-                      <li class="list-group-item"><p class="text-right"><b>`+ key + `</b> <span class="label label-danger">String</span></p>
-                      <button id="select-all" data-toggle="tooltip" title="Select all" type="button"
-                      class="btn btn-default btn-sm"><li class="string-option">Test</li>
-                      </button>
-                      <button id="select-all" data-toggle="tooltip" title="Select all" type="button"
-                      class="btn btn-default btn-sm"><li class="string-option">asdf
-                      </button>
-                      </li>
-                    `;
-                    //cols_type[key] ='String';
-                    }
-                
+                        
+                var attr_content = $("<ul>");
+                attr_content.attr("id", "table-attrs-list");
+                attr_content.addClass("list-group");
+                // attr_content = '<ul class="list-group" id="table-attrs-list">'
+                for (var key in if_number) {
+                  if (if_number[key] == true) {
+                    //cols_type[key] = 'Number';
+                    var list_number = $("<li>", {
+                      class: "list-group-item",
+                      html: "<p class='text-right'><b>" + key + "</b> <span class='label label-primary'>Number</span></p>"
+                    });
+                    list_number.attr("type", "Number");
+                    //attr_content += `
+                    //<li class="list-group-item"><p class="text-right"><b>`+ key + `</b> <span class="label label-primary">Number</span></p></li>
+                    //`;
+                    attr_content.append(list_number);
+                  }
+                  else {
+                    //cols_type[key] = 'String';
+                    var list_string = $("<li>", {
+                      class: "list-group-item"
+                    });
+                    var paragraph = $("<p>", {
+                      class: "text-right",
+                      html: "<b>" + key + " </b>"
+                    });
+                    var label = $("<span>", {
+                      class: "label label-danger"
+                    }).text("String");
+                    paragraph.append(label);
+                    list_string.append(paragraph);
+                    list_string.attr("type", "String");
+
+                    var ordinal_button = $("<button>");
+                    ordinal_button.html("<b>Ordinal</b>");
+                    ordinal_button.attr("id", "ordinal_button");
+                    ordinal_button.addClass("btn btn-default btn-sm");
+                    ordinal_button.click(function() {
+                      list_string.attr("type", "Ordinal");
+                      label.removeClass("label-danger");
+                      label.addClass("label-primary");
+                      $(this).css("background-color", "#5e9dd4");
+                      $(this).parent().find("#onehot_button").css("background-color", "#ffffff");
+                      if ($(this).parent().hasClass("onehot")) {
+                        $(this).parent().removeClass("onehot");
+                      }
+                      $(this).parent().addClass("ordinal");
+                    })
+
+                    var onehot_button = $("<button>");
+                    onehot_button.html("<b>One-hot</b>");
+                    onehot_button.attr("id", "onehot_button");
+                    onehot_button.addClass("btn btn-default btn-sm");
+                    onehot_button.click(function() {
+                      list_string.attr("type", "One-hot");
+                      label.removeClass("label-danger");
+                      label.addClass("label-primary");
+                      //cols_type[key] = 'Encoded';
+                      $(this).css("background-color", "#5e9dd4");
+                      $(this).parent().find("#ordinal_button").css("background-color", "#ffffff");
+                      if ($(this).parent().hasClass("ordinal")) {
+                        $(this).parent().removeClass("ordinal");
+                      }
+                      $(this).parent().addClass("onehot");
+                    })
+                    //onehot_button.attr("id", "asdf");
+                    list_string.append(ordinal_button);
+                    list_string.append(onehot_button);
+                    attr_content.append(list_string);
+                  }
                 }
-                attr_content+= '</ul>'
+                // attr_content += '</ul>'
                 $('#table-attrs').html(attr_content);
 
                 $(function(){

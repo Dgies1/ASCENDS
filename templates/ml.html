@@ -33,6 +33,9 @@
     hist_chart_rows = [];
     global_MAE = -1;
     global_R2 = -1;
+    global_accuracy = -1;
+    global_type = '';
+    var chart;
     // Load the Visualization API and the corechart package.
     google.charts.load('current', { 'packages': ['corechart'] });
 
@@ -55,7 +58,7 @@
       };
 
       // Instantiate and draw our chart, passing in some options.
-      var chart = new google.visualization.ColumnChart(document.getElementById('history-chart'));
+      chart = new google.visualization.ColumnChart(document.getElementById('history-chart'));
       chart.draw(data, options);
     }
 
@@ -283,6 +286,12 @@
         if (global_MAE != -1) {
           var tag = $("#tag-name").val();
           hist_chart_rows.push([tag, Number(global_MAE.toFixed(3))]);
+          drawHistoryChart();
+          //global_MAE = -1;
+        }
+        else if (global_accuracy != -1) {
+          var tag = $("#tag-name").val();
+          hist_chart_rows.push([tag, Number(global_accuracy.toFixed(3))]);
           drawHistoryChart();
           //global_MAE = -1;
         }
@@ -550,6 +559,13 @@
         var preset = $("#preset-picker option:selected").val();
         var scaler = $("#scaler-picker option:selected").val();
 
+        if (global_type == 'C') {
+          if (val == 'LR' || val == 'KR' || val == 'BR') {
+            alert('Please choose a model that supports classification.');
+            return;
+          }
+        }
+
         var num_fold = $("#num-fold").val();
 
         var num_fold_test = Number(num_fold);
@@ -641,6 +657,7 @@
 
             global_MAE = MAE;
             global_R2 = R2;
+            global_accuracy = accuracy;
 
             $('#MAE').html(info);
             $('#tag-name').val(model_abbr + "-" + date_time_str);
@@ -664,8 +681,14 @@
         
         var val = $("#algorithm-picker option:selected").val();
         if(val=='LR'){
-          alert('No Tuning required for linear regression');
+          alert('No tuning required for Linear Regression');
           return;
+        }
+        if (global_type == 'C') {
+          if (val == 'LR' || val == 'KR' || val == 'BR') {
+            alert('Please choose a model that supports classification.');
+            return;
+          }
         }
         var preset = $("#preset-picker option:selected").val();
         var scaler = $("#scaler-picker option:selected").val();
@@ -773,6 +796,10 @@
       $('#unselect-all').click(function (event) {
         unselect_all();
 
+      });
+
+      $('#save-history').click(function (event) {
+        save_history(chart);
       });
     });
 
@@ -1013,7 +1040,7 @@
         <div class="panel-heading">
           <h3 class="panel-title">Test History</h3>
         </div>
-        <button id="save-history" data-toggle="tooltip" title="Save Predictions" type="button"
+        <button id="save-history" data-toggle="tooltip" title="Save History" type="button"
           class="btn btn-default btn-sm">
           <span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Save History
         </button>

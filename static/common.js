@@ -404,6 +404,7 @@ function add_to_target() {
   });
   if (col_to_add.length == 1) {
     if (col_to_add_type[0] == 'Number') {
+      global_type = 'R';
       target_col = col_to_add[0];
       //cols_type[col_to_add[0]] = col_to_add_type[0];
       var target_col_jq = $("<p>", {
@@ -420,6 +421,7 @@ function add_to_target() {
       return;
     }
     if (col_to_add_type[0] == "Ordinal") {
+      global_type = 'C';
       target_col = col_to_add[0];
       ordinal_cols.push(col_to_add[0]);
       //cols_type[col_to_add[0]] = col_to_add_type[0];
@@ -577,4 +579,15 @@ function remove_input_cols() {
             No input column has been selected.
           </div>`);
   }
+}
+
+function save_history(chart) {
+  if (typeof chart !== 'undefined') {
+    var imageURI = chart.getImageURI();
+    var link = document.createElement('a');
+    link.href = imageURI;
+    link.download = "ASCENDS-test-history.png";
+    link.click();
+  }
+  // TODO: make save_history and save_correlation consistent. Either both to downloads are both to ASCENDS folder
 }

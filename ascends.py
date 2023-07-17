@@ -67,7 +67,11 @@ import random
 import sys
 import time
 import traceback
-from minepy import MINE
+minepy = True
+try:
+    from minepy import MINE
+except:
+    minepy = False
 from sklearn.linear_model import LogisticRegression
 from os import path
 from pathlib import PurePath
@@ -221,7 +225,7 @@ def correlation_analysis_all(data_df, target_col, top_k=10, file_to_save = None,
         if only_pcc==False or only_pcc=='False':
             for col in data_df.columns:
                 print(" - computing for ", col, "...")
-                if col!=target_col:
+                if col!=target_col and minepy:
                     x = data_df[col].values
                     y = data_df[target_col].values
                     mine = MINE()
@@ -471,9 +475,9 @@ def define_model_classifier(model_type, model_parameters, x_header_size, random_
                                      decision_function_shape = model_parameters['svm_decision_function_shape']))
         ])
     else:
-        print("Error: idkrn")
+        print("Error: Choose a model that supports classification")
         
-    return model # TODO: find out if model can ever be undefined here
+    return model # TODO: make error statements real errors
 
 def define_model_regression(model_type, model_parameters, x_header_size, random_state = None) -> Pipeline:
     """initialize and return regression Pipeline object using model_type and parameters"""
@@ -572,7 +576,7 @@ def define_model_regression(model_type, model_parameters, x_header_size, random_
                                         gamma = fix_value(model_parameters['xgb_gamma'], float)))
         ])
     else:
-        print("Error: idkrn also")
+        print("Error: Unrecognized model_type  of '" + model_type + "'")
         
     return model
 

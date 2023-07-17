@@ -237,8 +237,7 @@
       });
 
       $('#cols-analysis').click(function (event) {
-      
-        if(input_cols.length>0&&target_col!=null){
+        if(input_cols.length > 0 && target_col != null){
 
           var data =
             {
@@ -260,6 +259,14 @@
             
             success: function(jsonResponse){
               var objresponse = JSON.parse(jsonResponse);
+              if (objresponse['error_msg'] == 'Empty') {
+                alert('Correlation Analysis is currently not supported for native Windows. Please use the WSL installation for this feature.');
+                return;
+              }
+              else if (objresponse['error_msg'] != 'None') {
+                alert(`Something went wrong.\nPython error: ${objresponse['error_msg']}`);
+                return;
+              }
               rows = objresponse['rows'];
               select_html = ``
               $('#avail-chart-list').html(select_html);

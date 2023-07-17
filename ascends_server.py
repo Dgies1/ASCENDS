@@ -224,29 +224,34 @@ class FeatureAnalysisHandler(tornado.web.RequestHandler):
         self.render("index.html", title="Profile", data=json.dumps(json_data))
 
     def post(self):
-        
-        print("* Feature Analysis Started ..")
-        json_obj = json_decode(self.request.body)
-        target_col = json_obj["target_col"]
-        input_cols = json_obj["input_cols"]
-        file_path = json_obj["path_to_data"]
-        
-        if target_col in input_cols:
-            input_cols.remove(target_col)
-        #try:
-        #    input_cols.remove(target_col)
-        #except:
-        #    # remove target column from input column list
-        #   pass
-
-        data_df, x_train, x_test, y_train, y_test, header_x, header_y = asc.data_load_shuffle(csv_file = file_path, train_cols=input_cols, cols_to_remove=[], target_col=target_col, random_state=0)
-        fs_dict, final_report = asc.correlation_analysis_all(data_df, target_col, top_k=99999, file_to_save = None, save_chart = None)
-        rows = [['Feature','MIC','MAS','MEV','MCN','MCN_general','GMIC','TIC','PCC_SQRT','PCC']]
-        for index, row in final_report.iterrows():
-            rows.append([index, row['MIC'], row['MAS'], row['MEV'], row['MCN'], row['MCN_general'], row['GMIC'], row['TIC'], row['PCC_SQRT'], row['PCC']])
-
         response_to_send = {}
-        response_to_send['rows'] = rows
+        try:
+            print("* Feature Analysis Started ..")
+            json_obj = json_decode(self.request.body)
+            target_col = json_obj["target_col"]
+            input_cols = json_obj["input_cols"]
+            file_path = json_obj["path_to_data"]
+            
+            if target_col in input_cols:
+                input_cols.remove(target_col)
+            #try:
+            #    input_cols.remove(target_col)
+            #except:
+            #    # remove target column from input column list
+            #   pass
+
+            data_df, x_train, x_test, y_train, y_test, header_x, header_y = asc.data_load_shuffle(csv_file = file_path, train_cols=input_cols, cols_to_remove=[], target_col=target_col, random_state=0)
+            fs_dict, final_report = asc.correlation_analysis_all(data_df, target_col, top_k=99999, file_to_save = None, save_chart = None)
+            rows = [['Feature','MIC','MAS','MEV','MCN','MCN_general','GMIC','TIC','PCC_SQRT','PCC']]
+            for index, row in final_report.iterrows():
+                rows.append([index, row['MIC'], row['MAS'], row['MEV'], row['MCN'], row['MCN_general'], row['GMIC'], row['TIC'], row['PCC_SQRT'], row['PCC']])
+            response_to_send['rows'] = rows
+            if final_report.empty:
+                response_to_send['error_msg'] = 'Empty'
+            else:
+                response_to_send['error_msg'] = 'None'
+        except Exception as e:
+            response_to_send['error_msg'] = str(e)
         self.write(json.dumps(response_to_send))
 
 class MLAnalysisHandler(tornado.web.RequestHandler):
@@ -268,9 +273,9 @@ class MLAnalysisHandler(tornado.web.RequestHandler):
 class GetModelFileListHandler(tornado.web.RequestHandler):
     
     def post(self):
+        response_to_send = {}
         try:
             model_file_list = glob.glob(str(PurePath("static/learned_models/*.pkl")))
-            response_to_send = {}
             response_to_send['model_files'] = model_file_list
             response_to_send['error_msg'] = 'None'
         except Exception as e:
@@ -280,9 +285,9 @@ class GetModelFileListHandler(tornado.web.RequestHandler):
 class GetPresetFileListHandler(tornado.web.RequestHandler):
     
     def post(self):
+        response_to_send = {}
         try:
             preset_file_list = glob.glob(str(PurePath("static/config/*.*")))
-            response_to_send = {}
             response_to_send['preset_files'] = preset_file_list
             response_to_send['error_msg'] = 'None'
         except Exception as e:

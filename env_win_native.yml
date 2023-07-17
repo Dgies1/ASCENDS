@@ -15,5 +15,4 @@ dependencies:
  - m2w64-gcc
  - pip
  - pip:
-   - minepy==1.2.6
    - tensorflow==2.11.1

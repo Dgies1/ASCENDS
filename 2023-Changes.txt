@@ -1,0 +1,14 @@
+List of major changes made this Summer, 2023 (in no order, and is not at all exhaustive. I also made tons of small changes that I cannot remember)
+- Updated packages to newest compatible versions
+- Implemented XGBoost training and tuning
+- Hotfix native Windows installation by disabling minepy
+- Implemented classificaion in GUI. Classification decided by whether the target column is categorical, which isn't a good way of determining.
+- Added more descriptive error handling in GUI
+- Implemented optional ordinal and one-hot encoding for categorical data, instead of relying on manually mapping
+- Reworked data_load_shuffle()
+- Changed input_cols to train_cols in CLI because it was easier for me to understand. It might need to be changed back though.
+- Dynamically change model choices based on classification or regression.
+- Try to refactor and improve some code, but I might have made it worse...
+- Added ability to save raw data from correlation chart and save the history comparison bar graph in GUI
+- Added lots of TODO statements. Some were notes to myself and some were features I thought should be implemented.
+- Added credit to Kevin Li. I changed it to say programmed by Matt Lee and Kevin Li, but I'm not sure if this is where I was supposed to credit myself.

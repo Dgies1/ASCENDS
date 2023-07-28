@@ -13,7 +13,7 @@ advanced data analysis and machine learning techniques with simple interfaces (*
 The current version of ASCENDS mainly focuses on two different machine learning tasks - classification and regression (value prediction). 
 
 * What is classification?
-Users can train a predictive model (mapping function) that predicts a category (Y) from input variables (X) 
+Users can train a predictive model (manual mapping function, or one-hot or ordinal encoding) that predicts a category (Y) from input variables (X) 
 using ASCENDS. For instance, ASCENDS can train a model for predicting whether an email is spam or not-spam. 
 
 * What is regression?
@@ -38,6 +38,7 @@ the tool can be also used for many other applications.
 * Dongwon Shin, (shind@ornl.gov)
 * Jian Peng (pengj@ornl.gov)
 * Andrew Williams (Intern, 2019 Summer) (atw54@cornell.edu)
+* Kevin Li (Intern, 2023 Summer) (prcysprk@umich.edu)
 
 # Citation
 We encourage you to cite both papers below, if you have used our tool:
@@ -275,9 +276,9 @@ ASCENDS will automatically create this directory and populate it accordingly.
 `Name` is the target column name. So, ASCENDS will train a model that predicts `Name` when four other column (SepalLength,SepalWidth,PetalLength,PetalWidth) 
 values are given. As we can see in the first 5 lines of data file, values for the column `Name` are not numerical. For training, we need to map
 the categorical values into numerical values. This is done by using `--mapping` option. The example command will map `Iris-setosa` to 0, `Iris-versicolor` to 1, and `Iris-virginica` to 2
- for all values of column `Name`.
+ for all values of column `Name`. Additionally, this mapping can be done automatically by specifying `--ordinal_cols Name`, which will perform with mapping (called ordinal encoding) automatically. The first unique value is mapped to 0, the next to 1, etc. All other categorical columns not listed with `--mapping` or `--ordinal_cols` is one-hot encoded, where it is split into multiple boolean (Yes/No) columns. For example, `Name` would get split into 3 columns, with each column telling whether the entry is a Setosa, Versicolor, or a Virginica. Ordinal encoding is best for when the categories are related with a logical order, and one-hot is better for unrelated categories. Categorical target columns cannot be one-hot encoded.
 
-Then you will see, the following result.
+Once inputting the above line, you will see the following result.
 
 ```
 $     python train.py c data/iris.csv output/iris_project Name --mapping "{'Name': {'Iris-setosa':0, 'Iris-versicolor':1, 'Iris-virginica':2}}" --num_of_class 3
@@ -286,7 +287,7 @@ Using TensorFlow backend.
  * ASCENDS: Advanced data SCiEnce toolkit for Non-Data Scientists 
  * ML model trainer 
 
- programmed by Matt Sangkeun Lee (lees4@ornl.gov) 
+ programmed by Matt Sangkeun Lee (lees4@ornl.gov) and Kevin Li (prcysprk@umich.edu)
 
  [ Data Loading ]
  Loading data from :data/iris.csv
@@ -389,7 +390,7 @@ Using TensorFlow backend.
  * ASCENDS: Advanced data SCiEnce toolkit for Non-Data Scientists 
  * ML model trainer 
 
- programmed by Matt Sangkeun Lee (lees4@ornl.gov) 
+ programmed by Matt Sangkeun Lee (lees4@ornl.gov) and Kevin Li (prcysprk@umich.edu)
 
  [ Data Loading ]
  Loading data from :data/BostonHousing.csv
@@ -432,14 +433,13 @@ Executing the above command will predict values (`r`) using model `output/boston
 and resulting predictions will be saved in the `output/boston_proj` project folder.
 Note that we specified the trained model file we achieved ealier via ```train.py``` command.
 
-# Using Web-based GUI: Regression
+# Using Web-based GUI
 
-The current version of ascends-toolkit provides a web-based GUI (graphic user interface) for regression tasks. To start the ascends-server, you need to download the source code from the repository. With ascends **Anaconda environment activated**, go to the ASCENDS directory. (If you run the ASCENDS server without activating the Anaconda environment with required packages installed, 
-it will not run properly.)
+To start the ascends-server, you need to download the source code from the repository. With ascends **Anaconda environment activated**, go to the ASCENDS directory. (If you run the ASCENDS server without activating the Anaconda environment with required packages installed, it will not run properly.)
 
 Then, run the command as follows.
 
-(ascends) slzmbpro:ascends-toolkit slz$ python ascends_server.py 
+(ascends) $ python ascends_server.py 
 Using TensorFlow backend.
 
 ```
@@ -447,7 +447,7 @@ Using TensorFlow backend.
  * ASCENDS: Advanced data SCiEnce toolkit for Non-Data Scientists 
  * Web Server ver 0.1 
 
- programmed by Matt Sangkeun Lee (lees4@ornl.gov) 
+ programmed by Matt Sangkeun Lee (lees4@ornl.gov) and Kevin Li (prcysprk@umich.edu)
  please go to : http://localhost:7777/
 ```
 
@@ -458,7 +458,7 @@ You can open a standard csv file by clicking File from the top-down menu and sel
 
 ![](./logo/correlation_analysis.png)
 
-After a file was loaded, the 'All Columns' module allows you to choose what input and output variables for your model. You can perform correlation analysis between the selected input and output columns using the 'Correlation Analysis' module. Once you are ready to proceed, click 'Go to ML' button to move on the machine learning test module.
+After a file was loaded, the 'All Columns' module allows you to choose what input and output variables for your model. You can perform correlation analysis between the selected input and output columns using the 'Correlation Analysis' module. All categorical columns must first have an encoding selected before analyzing. Otherwise, the label will say "String" in red and you will not be able to proceed. Once you are ready to proceed, click 'Go to ML' button to move on the machine learning test module.
 
 ![](./logo/ml_testing.png)
 Within the ML tab, you can test various ML algorithms such as random forest, neural network, nearest neighbors, etc, and compare their accuracy. You can use either use a default hyper parameter setting or load a custom hyperparameter file for further optimization. For later prediction, you can save your trained model and it can be used later either with command-line interface or web-based GUI.

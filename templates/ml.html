@@ -491,7 +491,7 @@
         }
         else {
           $('#modal-title').html('Warning');
-          $('#modal-content').html('<div class="alert alert-danger" role="alert"> ' + 'No model to save. Please perform test first.' + '</div>');
+          $('#modal-content').html('<div class="alert alert-danger" role="alert"> No model to save. Please perform test first.</div>');
           $('#my-modal').modal('show');
         }
 
@@ -500,7 +500,7 @@
       $('#save-correlation').click(function (event) {
         if (global_MAE == -1) {
           $('#modal-title').html('Warning');
-          $('#modal-content').html('<div class="alert alert-danger" role="alert"> ' + 'No correlation to save. Please perform test first.' + '</div>');
+          $('#modal-content').html('<div class="alert alert-danger" role="alert"> No chart data to save. Please perform regression test first.</div>');
           $('#my-modal').modal('show');
           return;
         }
@@ -516,41 +516,18 @@
           $('#my-modal').modal('show');
           return;
         }
-        var data =
-        {
-          input_cols: input_cols,
-          target_col: target_col,
-          path_to_data: path_to_data,
-          model_abbr: val,
-          scaler: scaler,
-          num_fold: num_fold,
-          tag: tag,
-          MAE: global_MAE,
-          R2: global_R2,
-          preset: preset
-        };
-        var dataToSend = JSON.stringify(data);
-        $("body").find("*").attr("disabled", "disabled");
-        $("body").css("cursor", "progress");
-        $.ajax({
-          url: '/save_correlation',
-          type: 'POST',
-          data: dataToSend,
-          processData: false,
-          contentType: false,
-          success: function (jsonResponse) {
-            var objresponse = JSON.parse(jsonResponse);
-            if (objresponse['error_msg'] != 'None')
-              alert(`Something went wrong.\nPython error: ${objresponse['error_msg']}`)
-            refresh_model_file_list();
-          },
-          error: function (XHR, textStatus, errorThrown) {
-            let msg = `Something went wrong.\n ${textStatus}: ${errorThrown}`
-            alert(msg);
-          }
-        });
-        $("body").css("cursor", "default");
-        $("body").find("*").removeAttr("disabled");
+        
+        var fileUrl = "static/output/ml/ml_result.csv";
+
+        var downloadLink = document.createElement("a");
+        downloadLink.href = fileUrl;
+        downloadLink.download = "Predicted-Actual-" + tag + ".csv";
+
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+
+        // Remove the temporary anchor from the document
+        document.body.removeChild(downloadLink);
       });
 
       $('#ml-analysis').click(function (event) {
@@ -559,7 +536,7 @@
         var preset = $("#preset-picker option:selected").val();
         var scaler = $("#scaler-picker option:selected").val();
 
-        if (global_type == 'C') {
+        if (global_type == 'C') { // Extra safety measure that currently does nothing. Keep it for now for safety
           if (val == 'LR' || val == 'KR' || val == 'BR') {
             alert('Please choose a model that supports classification.');
             return;
@@ -589,6 +566,18 @@
           preset: preset
         };
 
+        if (input_cols.length == 0) {
+          $('#modal-title').html('Error');
+          $('#modal-content').html('<div class="alert alert-danger" role="alert"> ' + 'Please select input columns.' + '</div>');
+          $('#my-modal').modal('show');
+          return;
+        }
+        if (target_col == null) {
+          $('#modal-title').html('Error');
+          $('#modal-content').html('<div class="alert alert-danger" role="alert"> ' + 'Please select target column.' + '</div>');
+          $('#my-modal').modal('show');
+          return;
+        }
         var dataToSend = JSON.stringify(data);
 
         $("body").find("*").attr("disabled", "disabled");
@@ -661,8 +650,11 @@
 
             $('#MAE').html(info);
             $('#tag-name').val(model_abbr + "-" + date_time_str);
-            if (MAE != -1 || accuracy != -1) {
+            if (MAE != -1) {
               $("#mae-chart").attr("src", "static/output/ml/ml_result.png?" + date_time_str);
+            }
+            else if (accuracy != -1) {
+              // Do nothing, there's no relevant chart to show
             } else {
               $("#mae-chart").attr("src", "static/img/error.png");
             }
@@ -946,14 +938,6 @@
                 <div class="form-group">
                   <label for="algorithm-picker">Algorithm</label>
                   <select id="algorithm-picker" class="form-control">
-                    <option value="RF">Random Forest</option>
-                    <option value="LR">Linear Regression</option>
-                    <option value="NN">Nearest Neighbor</option>
-                    <option value="KR">Kernel Ridge Regression</option>
-                    <option value="BR">Bayesian Ridge Regression</option>
-                    <option value="NET">Neural Network</option>
-                    <option value="SVM">Support Vector Machine</option>
-                    <option value="XGB">Extreme Gradient Boosting</option>
                   </select>
                   <label for="scaler-picker">Scaler</label>
                   <select id="scaler-picker" class="form-control">
@@ -992,7 +976,7 @@
               <form class="form-inline">
                 <div class="form-group">
                   <label for="tag-name">Tag</label>
-                  <input type="text" class="form-control" id="tag-name" value="Test"></input>
+                  <input type="text" class="form-control" id="tag-name"></input>
                   <button id="add-to-history" data-toggle="tooltip" title="Add Result to the History Chart"
                     type="button" class="btn btn-default btn-sm">
                     <span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Add to History
@@ -1001,9 +985,9 @@
                     class="btn btn-default btn-sm">
                     <span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Save Model
                   </button>
-                  <button id="save-correlation" data-toggle="tooltip" title="Save Correlation" type="button"
+                  <button id="save-correlation" data-toggle="tooltip" title="Download raw data shown in chart" type="button"
                     class="btn btn-default btn-sm">
-                    <span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Save Correlation
+                    <span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Download Chart Data
                   </button>
                 </div>
               </form>

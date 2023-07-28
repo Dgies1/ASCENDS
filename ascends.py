@@ -11,53 +11,53 @@ import random as rn
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 from keras import regularizers
-from keras.datasets import mnist
+#from keras.datasets import mnist
 from keras.layers import Dense, Dropout
 from keras.models import Sequential
-from keras.optimizers import RMSprop
-from pandas.plotting import scatter_matrix
-from pprint import pprint
+#from keras.optimizers import RMSprop
+#from pandas.plotting import scatter_matrix
+#from pprint import pprint
 from sklearn import linear_model
 from sklearn import preprocessing
 from sklearn import svm
-from sklearn.cluster import KMeans
-from sklearn.decomposition import PCA
+#from sklearn.cluster import KMeans
+#from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import StackingRegressor
 from sklearn.ensemble import StackingClassifier
-from sklearn.feature_selection import f_regression
-from sklearn.feature_selection import SelectFromModel
-from sklearn.feature_selection import SelectKBest
-from sklearn.gaussian_process.kernels import WhiteKernel, ExpSineSquared
-from sklearn.isotonic import IsotonicRegression
+#from sklearn.feature_selection import f_regression
+#from sklearn.feature_selection import SelectFromModel
+#from sklearn.feature_selection import SelectKBest
+#from sklearn.gaussian_process.kernels import WhiteKernel, ExpSineSquared
+#from sklearn.isotonic import IsotonicRegression
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import RidgeClassifier
-from sklearn.linear_model import SGDRegressor
-from sklearn.metrics import mean_squared_error
+#from sklearn.linear_model import SGDRegressor
+#from sklearn.metrics import mean_squared_error
 from sklearn.metrics import mean_absolute_error
 from sklearn.metrics import r2_score
 from sklearn.model_selection import cross_val_predict
-from sklearn.model_selection import cross_val_score
+#from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.preprocessing import Normalizer
-from sklearn.preprocessing import StandardScaler
-from keras.wrappers.scikit_learn import KerasClassifier
-from sklearn.model_selection import KFold
-from sklearn.preprocessing import LabelEncoder
+#from sklearn.preprocessing import MinMaxScaler
+#from sklearn.preprocessing import Normalizer
+#from sklearn.preprocessing import StandardScaler
+#from keras.wrappers.scikit_learn import KerasClassifier
+#from sklearn.model_selection import KFold
+#from sklearn.preprocessing import LabelEncoder
 import configparser
-import csv
-import datetime
-import glob
+#import csv
+#import datetime
+#import glob
 import keras
-import math
-import matplotlib
+#import math
+#import matplotlib
 #matplotlib.use("TkAgg")
 from matplotlib import pyplot as plt
 import os
@@ -66,7 +66,7 @@ import pickle
 import random
 import sys
 import time
-import traceback
+#import traceback
 minepy = True
 try:
     from minepy import MINE
@@ -320,6 +320,8 @@ def default_model_parameters_classifier() -> dict[str, str]:
     'svm_degree': '3', 'svm_coef0': '0.0', 'svm_tol': '1e-3', 'svm_c': '1.0', \
     'svm_gamma': 'auto', \
     'svm_decision_function_shape':'ovr', \
+    'xgb_n_estimators': '100', 'xgb_min_child_weight': '1', 'xgb_max_depth': '6', \
+    'xgb_learning_rate': '0.3', 'xgb_gamma': '0.0', \
     
     'net_structure':'16 16 16',\
     'net_layer_n':'3',\
@@ -420,7 +422,7 @@ def define_model_classifier(model_type, model_parameters, x_header_size, random_
         max_features = fix_value(model_parameters['rf_max_features'],'float', True)
         if max_features > 1.0:
             max_features = int(max_features)
-        estimators = [
+        model = Pipeline([
             ('classification', RandomForestClassifier(n_estimators = int(model_parameters['rf_n_estimators']), 
                                                       max_features = max_features,
                                                       max_depth = fix_value(model_parameters['rf_max_depth'],'int'), 
@@ -432,15 +434,7 @@ def define_model_classifier(model_type, model_parameters, x_header_size, random_
                                                       min_weight_fraction_leaf = float(model_parameters['rf_min_weight_fraction_leaf']), 
                                                       max_leaf_nodes = fix_value(model_parameters['rf_max_leaf_nodes'],'int'),
                                                       min_impurity_decrease = float(model_parameters['rf_min_impurity_decrease'])))
-            #('xgboost', XGBClassifier())
-        ]
-
-        # Create the StackingRegressor with the base estimators
-        stacking_classifier = StackingClassifier(
-            estimators=estimators
-        )
-        model = make_pipeline(stacking_classifier)
-
+        ])
 
 
 
@@ -474,6 +468,14 @@ def define_model_classifier(model_type, model_parameters, x_header_size, random_
                                      gamma = fix_value(model_parameters['svm_gamma'],'float'),
                                      decision_function_shape = model_parameters['svm_decision_function_shape']))
         ])
+    elif model_type == "XGB":
+        model = Pipeline([
+            ('regression', XGBClassifier(n_estimators = int(model_parameters['xgb_n_estimators']),
+                                        min_child_weight = int(model_parameters['xgb_min_child_weight']),
+                                        max_depth = int(model_parameters['xgb_max_depth']),
+                                        learning_rate = fix_value(model_parameters['xgb_learning_rate'], float),
+                                        gamma = fix_value(model_parameters['xgb_gamma'], float)))
+        ])
     else:
         print("Error: Choose a model that supports classification")
         
@@ -490,27 +492,6 @@ def define_model_regression(model_type, model_parameters, x_header_size, random_
         max_features = fix_value(model_parameters['rf_max_features'],'float', True)
         if max_features > 1.0:
             max_features = int(max_features)
-        estimators = [
-            ('random_forest', RandomForestRegressor(n_estimators = int(model_parameters['rf_n_estimators']), 
-                                                   max_features = max_features,
-                                                   max_depth = fix_value(model_parameters['rf_max_depth'],'int'), 
-                                                   min_samples_split = int(model_parameters['rf_min_samples_split']), 
-                                                   min_samples_leaf = int(model_parameters['rf_min_samples_leaf']), 
-                                                   bootstrap = str2bool(model_parameters['rf_bootstrap']), 
-                                                   criterion = model_parameters['rf_criterion'], random_state = random_state,
-                                                   min_weight_fraction_leaf = float(model_parameters['rf_min_weight_fraction_leaf']), 
-                                                   max_leaf_nodes = fix_value(model_parameters['rf_max_leaf_nodes'],'int'),
-                                                   min_impurity_decrease = float(model_parameters['rf_min_impurity_decrease'])))
-            #('xgboost', XGBRegressor())
-        ]
-
-        # Create the StackingRegressor with the base estimators
-        stacking_regressor = StackingRegressor(
-            estimators=estimators
-        )
-        model = make_pipeline(stacking_regressor)
-
-        """
         model = Pipeline([
             ('regression', RandomForestRegressor(n_estimators = int(model_parameters['rf_n_estimators']), 
                                                    max_features = fix_value(model_parameters['rf_max_features'],'float', True), 
@@ -523,8 +504,6 @@ def define_model_regression(model_type, model_parameters, x_header_size, random_
                                                    max_leaf_nodes = fix_value(model_parameters['rf_max_leaf_nodes'],'int'),
                                                    min_impurity_decrease = float(model_parameters['rf_min_impurity_decrease'])))
         ])
-        model.steps.append(['xgboost', XGBRegressor()])
-        """
     elif model_type == "NN":
         model = Pipeline([
             ('regression', KNeighborsRegressor(n_neighbors = int(model_parameters['nn_n_neighbors']),
@@ -756,7 +735,6 @@ def get_session(project_folder) -> int:
         return len(meta.index) + 1
     except pd.errors.EmptyDataError:
         return 1
-    # TODO: error message here for any potential other exceptions (EmptyDataError is normal and isn't bad)
 
 # In[10]:
 
@@ -1055,7 +1033,7 @@ def hyperparameter_tuning_classifier(tag, x_train, y_train, num_of_folds, scaler
     elif tag == 'XGB':
         estimator = XGBClassifier()
     else:
-        estimator = None
+        raise Exception('Unknown model type')
     
     tuned_parameters = None
     if estimator is not None:
@@ -1209,7 +1187,7 @@ def hyperparameter_tuning(tag, x_train, y_train, num_of_folds, scaler_option, n_
         estimator = XGBRegressor()
         random_grid = xgb_random_grid
     else:
-        estimator = None
+        raise Exception('Unknown model type')
     
     tuned_parameters = None
     if estimator is not None:

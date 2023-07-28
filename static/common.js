@@ -18,7 +18,10 @@ function set_selectable() {
 }
 
 function load_data_ml() {
-
+  
+  $('#algorithm-picker').html(`
+    <option value="asdf">Select input and target columns</option>`)
+    
   var data =
     {
       path_to_data: path_to_data
@@ -412,15 +415,13 @@ function add_to_target() {
       });
       target_col_html = $(target_col_jq).html();
       $('#target-col').html(target_col_jq);
-      return;
     }
-    if (col_to_add_type[0] == "String") {
+    else if (col_to_add_type[0] == "String") {
       $('#modal-title').html('Warning');
       $('#modal-content').html('<div class="alert alert-danger" role="alert"> ' + 'If target column is a String, then it must be ordinal encoded.' + '</div>');
       $('#my-modal').modal('show');
-      return;
     }
-    if (col_to_add_type[0] == "Ordinal") {
+    else if (col_to_add_type[0] == "Ordinal") {
       global_type = 'C';
       target_col = col_to_add[0];
       ordinal_cols.push(col_to_add[0]);
@@ -431,12 +432,32 @@ function add_to_target() {
       });
       target_col_html = $(target_col_jq).html();
       $('#target-col').html(target_col_jq);
+    }
+    else { // One-hot
+      $('#modal-title').html('Warning');
+      $('#modal-content').html('<div class="alert alert-danger" role="alert"> ' + 'Target column can only be ordinal encoded, not one-hot.' + '</div>');
+      $('#my-modal').modal('show');
       return;
     }
-    // One-hot
-    $('#modal-title').html('Warning');
-    $('#modal-content').html('<div class="alert alert-danger" role="alert"> ' + 'Target column can only be ordinal encoded, not one-hot.' + '</div>');
-    $('#my-modal').modal('show');
+    if (global_type == 'R') {
+      $('#algorithm-picker').html(`
+        <option value="RF">Random Forest</option>
+        <option value="LR">Linear Regression</option>
+        <option value="NN">Nearest Neighbor</option>
+        <option value="KR">Kernel Ridge Regression</option>
+        <option value="BR">Bayesian Ridge Regression</option>
+        <option value="NET">Neural Network</option>
+        <option value="SVM">Support Vector Machine</option>
+        <option value="XGB">Extreme Gradient Boosting</option>`)
+    }
+    else {
+      $('#algorithm-picker').html(`
+        <option value="RF">Random Forest</option>
+        <option value="NN">Nearest Neighbor</option>
+        <option value="NET">Neural Network</option>
+        <option value="SVM">Support Vector Machine</option>
+        <option value="XGB">Extreme Gradient Boosting</option>`)
+    }
   }
   else {
     $('#modal-title').html('Warning');

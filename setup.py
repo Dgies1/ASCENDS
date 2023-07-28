@@ -25,7 +25,6 @@ setup(
         'keras',
 	'tornado',
         'scikit-learn',
-        'minepy',
 	'np_utils',
     ],  
     scripts=['train.py','predict.py'],

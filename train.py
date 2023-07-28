@@ -3,10 +3,10 @@
 import warnings
 warnings.filterwarnings('ignore')
 import argparse
-import statistics
+#import statistics
 import sys
-import pprint
-import keras
+#import pprint
+#import keras
 import ascends as asc
 import ast
 import os
@@ -14,11 +14,11 @@ from sklearn.metrics import classification_report
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
 from pathlib import PurePath
-import numpy as np
+#import numpy as np
 import tensorflow as tf
-import random as rn
-from tensorflow.python.client import device_lib
-from keras import backend as K
+#import random as rn
+#from tensorflow.python.client import device_lib
+#from keras import backend as K
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
@@ -479,8 +479,7 @@ if __name__ == "__main__":
     
     print("\n * ASCENDS: Advanced data SCiEnce toolkit for Non-Data Scientists ")
     print(" * ML model trainer \n")
-    print(" programmed by Matt Sangkeun Lee (lees4@ornl.gov) ")
-
+    print(" programmed by Matt Sangkeun Lee (lees4@ornl.gov) and Kevin Li (prcysprk@umich.edu) ")
     parser = argparse.ArgumentParser()
     parser.add_argument("train_type", help = "Choose training type: 'c' for classification or 'r' for regression.",choices = ['c','r'])
     parser.add_argument( "input_file", help = "A csv file to train ML model")
@@ -493,7 +492,7 @@ if __name__ == "__main__":
     parser.add_argument( "--save_test_csv", choices = ['True','False'], default = 'False')
     parser.add_argument( "--save_metadata", choices = ['True','False'], default = 'True')
     parser.add_argument( "--mapping", help = "Mapping string value to numbers", default = '{}')
-    parser.add_argument( "--ordinal_cols", help = "Categorical raining columns to be ordinally encoded, as opposed to the default one-hot encoding", default = None)
+    parser.add_argument( "--ordinal_cols", help = "Categorical training columns to be ordinally encoded, as opposed to the default one-hot encoding. Do not include the target_col; if it is categorical it is automatically encoded ordinally.", default = None)
     parser.add_argument( "--save_auto_tune", choices = ['True','False'], default = 'True')
     parser.add_argument( "--auto_tune_iter", default = '1000')
     parser.add_argument( "--train_cols", help = "Input columns for training", nargs = '+') # TODO: make sure that train_cols and ignore_cols aren't used at the same time

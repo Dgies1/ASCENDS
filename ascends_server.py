@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
 # coding: utf-8
-# TODO: if train/target cols aren't selected, prompt the user instead of crashing
+# TODO: if no data is selected when training/tuning, prompt the user instead of proceeding
 # TODO: switch uncompressed development JQuery 3.7.0 to compressed production JQuery 3.7.0
 # TODO: if going to ML tab from Prediction, loaded model and columns disappear
 from __future__ import print_function
-import warnings
+#import warnings
 import tornado.escape
 import tornado.ioloop
 import tornado.web
 from  tornado.escape import json_decode
-from  tornado.escape import json_encode
-from tornado.concurrent import Future
-from tornado import gen
+#from  tornado.escape import json_encode
+#from tornado.concurrent import Future
+#from tornado import gen
 from tornado.options import define, options, parse_command_line
-import traceback
+#import traceback
 import os
 import json
 import csv
-import sys
+#import sys
 import ascends as asc
 import pandas as pd
 import numpy as np
@@ -267,7 +267,7 @@ class MLAnalysisHandler(tornado.web.RequestHandler):
         json_data['path_to_data'] = path_to_data
         json_data['target_col'] = target_col
         json_data['input_cols'] = input_cols
-
+        # TODO: when data is reloaded, encoded variables switch over to "Number". Make them keep their encoding
         self.render("ml.html", title="Profile", data=json.dumps(json_data))
 
 class GetModelFileListHandler(tornado.web.RequestHandler):
@@ -523,19 +523,6 @@ class SaveModelHandler(tornado.web.RequestHandler):
             response_to_send['error_msg'] = str(e)
         self.write(json.dumps(response_to_send))
 
-class SaveCorrelationHandler(tornado.web.RequestHandler):
-    
-    def post(self):
-        try:
-            json_obj = json_decode(self.request.body)
-            temp = pd.read_csv(PurePath("static/output/ml/ml_result.csv"))
-            temp.to_csv(PurePath("static/output/ml") / PurePath(json_obj['tag'] + '.csv'))
-            response_to_send = {}
-            response_to_send['error_msg'] = 'None'
-        except Exception as e:
-            response_to_send['error_msg'] = str(e)
-        self.write(json.dumps(response_to_send))
-
 class GetModelInfoHandler(tornado.web.RequestHandler):
     def post(self):
         response_to_send = {}
@@ -626,7 +613,7 @@ def main():
     
     print("\n * ASCENDS: Advanced data SCiEnce toolkit for Non-Data Scientists ")
     print(" * Web Server ver 0.1 \n")
-    print(" programmed by Matt Sangkeun Lee (lees4@ornl.gov) ")
+    print(" programmed by Matt Sangkeun Lee (lees4@ornl.gov) and Kevin Li (prcysprk@umich.edu)")
     print(" please go to : http://localhost:7777/")
 
     parse_command_line()
@@ -641,7 +628,6 @@ def main():
             (r"/execute_ml_analysis/?", ExecuteMLAnalysisHandler),
             (r"/execute_ml_tuning/?", ExecuteMLTuningHandler),
             (r"/save_model/?", SaveModelHandler),
-            (r"/save_correlation/?", SaveCorrelationHandler),
             (r"/get_model_info/?", GetModelInfoHandler),
             (r"/predict_page/?", PredictPageHandler),
             (r"/delete_model/?",DeleteModelHandeler),

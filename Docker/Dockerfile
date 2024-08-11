@@ -16,7 +16,7 @@ RUN curl -O https://repo.anaconda.com/archive/Anaconda3-2020.11-Linux-x86_64.sh
 RUN bash Anaconda3-2020.11-Linux-x86_64.sh -b -p /anaconda
 
 # Download ASCENDS
-RUN git clone https://github.com/ornlpmcp/ASCENDS.git
+RUN git clone https://github.com/Dgies1/ASCENDS.git
 RUN echo 'export PATH="/anaconda/bin:$PATH"' >> ~/.bashrc 
 RUN echo "source activate ascends" > ~/.bashrc
 ENV PATH /anaconda/bin:$PATH

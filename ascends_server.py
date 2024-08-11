@@ -156,14 +156,14 @@ class OpenFileHandler(tornado.web.RequestHandler):
             extn = os.path.splitext(fname)[1]
         except KeyError:
             need_to_upload = False
-            # TODO: Currently, it crashes if no file is selected, don't crash when no file is selected
+            # Handle the case where no file is selected
             json_obj = json_decode(self.request.body)
             path_to_data = json_obj['path_to_data'].split(".")
             extn = "."+path_to_data[-1]
 
-        if extn==".csv":
+        if extn == ".csv":
             
-            if need_to_upload==True:
+            if need_to_upload:
                 cname = "opened" + extn
                 fh = open(__UPLOADS__ / cname, 'wb')
                 fh.write(fileinfo['body'])
@@ -174,21 +174,21 @@ class OpenFileHandler(tornado.web.RequestHandler):
                 file_path = json_obj["path_to_data"]
 
             try:
-
                 header = []
                 rows = []
                 cols = {}
 
-                with open(file_path, 'r') as f:
+                # Open the file with UTF-8 encoding
+                with open(file_path, 'r', encoding='utf-8') as f:
                     reader = csv.reader(f)
                     r_idx = 0
                     for row in reader:
-                        if r_idx==0:
-                            for i in range(0,len(row)):
-                                header.append(row[i])
+                        if r_idx == 0:
+                            header.extend(row)
                         else:
-                            if row!=[]: rows.append(row)
-                        r_idx+=1
+                            if row:
+                                rows.append(row)
+                        r_idx += 1
             
                 response_to_send['msg'] = 'success'
                 response_to_send['header'] = header
@@ -204,8 +204,9 @@ class OpenFileHandler(tornado.web.RequestHandler):
 
         else:
             response_to_send['msg'] = 'error_no_csv'
-        temp = json.dumps(response_to_send)
-        self.write(temp)
+        
+        self.write(json.dumps(response_to_send))
+
 
 class FeatureAnalysisHandler(tornado.web.RequestHandler):
     

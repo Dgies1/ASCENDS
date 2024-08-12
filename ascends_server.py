@@ -646,7 +646,7 @@ def main():
             (r"/get_model_info", GetModelInfoHandler),
             (r"/predict_page", PredictPageHandler),
             (r"/delete_model",DeleteModelHandeler),
-            (r"/get_predicted_target",GetPredictedTarget)
+            (r"/get_predicted_target",GetPredictedTarget),
             (r"/train_model", TrainModelHandler),
             ],
         

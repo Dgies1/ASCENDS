@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  ascends:
+    build: .
+    image: docker-ascends
+    container_name: ascends_container
+    command: /bin/bash -c "source activate ascends && python ascends_server.py"
+    ports:
+      - "7777:7777"
+    working_dir: /ASCENDS

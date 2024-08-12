@@ -250,6 +250,43 @@ class FeatureAnalysisHandler(tornado.web.RequestHandler):
         response_to_send['rows'] = rows
         self.write(json.dumps(response_to_send))
 
+class FeatureAnalysisFileUploadHandler(tornado.web.RequestHandler):
+
+    def post(self):
+        print("* Feature Analysis with File Upload Started ..")
+        
+        # Retrieve the uploaded file
+        uploaded_file = self.request.files['file'][0]
+        original_fname = uploaded_file['filename']
+        extension = os.path.splitext(original_fname)[1]
+        
+        # Save the file temporarily
+        temp_file_path = f"./temp_uploaded_file{extension}"
+        with open(temp_file_path, 'wb') as output_file:
+            output_file.write(uploaded_file['body'])
+        
+        # Retrieve other form fields
+        target_col = self.get_argument("target_col")
+        input_cols = self.get_argument("input_cols").split(",")
+        
+        try:
+            input_cols.remove(target_col)
+        except ValueError:
+            pass
+
+        data_df, x_train, y_train, header_x, header_y = asc.data_load_shuffle(csv_file=temp_file_path, input_col=input_cols, cols_to_remove=[], target_col=target_col, random_state=0)
+        fs_dict, final_report = asc.correlation_analysis_all(data_df, target_col, top_k=99999, file_to_save=None, save_chart=None)
+        rows = [['Feature', 'MIC', 'MAS', 'MEV', 'MCN', 'MCN_general', 'GMIC', 'TIC', 'PCC_SQRT', 'PCC']]
+        for index, row in final_report.iterrows():
+            rows.append([index, row['MIC'], row['MAS'], row['MEV'], row['MCN'], row['MCN_general'], row['GMIC'], row['TIC'], row['PCC_SQRT'], row['PCC']])
+
+        response_to_send = {'rows': rows}
+        
+        # Remove the temporary file after processing
+        os.remove(temp_file_path)
+        
+        self.write(json.dumps(response_to_send))
+
 class MLAnalysisHandler(tornado.web.RequestHandler):
     
     def get(self):
@@ -532,6 +569,60 @@ class GetPredictedTarget(tornado.web.RequestHandler):
         print(response_to_send)
         self.write(json.dumps(response_to_send))
 
+# -- ASM International Code -- #
+class TrainModelHandler(tornado.web.RequestHandler):
+    def post(self):
+        try:
+            # Check if a file was uploaded
+            if 'csv_file' in self.request.files:
+                fileinfo = self.request.files['csv_file'][0]
+                filename = fileinfo['filename']
+                csv_path = os.path.join("/tmp", filename)
+                
+                # Save the uploaded file
+                with open(csv_path, 'wb') as f:
+                    f.write(fileinfo['body'])
+            else:
+                # No file uploaded, using the csv_path from JSON
+                csv_path = self.get_argument('csv_path', None)
+                if not csv_path:
+                    raise ValueError("CSV file path must be provided if no file is uploaded.")
+
+            # Extract other parameters
+            output_path = self.get_argument('output_path', 'output/iris_project')
+            target_column = self.get_argument('target_column', None)
+            if not target_column:
+                raise ValueError("Target column must be provided.")
+
+            mapping = self.get_argument('mapping', None)
+            if not mapping:
+                raise ValueError("Mapping must be provided.")
+
+            num_of_class = self.get_argument('num_of_class', None)
+            if not num_of_class:
+                raise ValueError("Number of classes must be provided.")
+            num_of_class = int(num_of_class)  # Ensure it's an integer
+
+            # Build the command
+            command = [
+                "python", "train.py", "c", csv_path, output_path, target_column,
+                "--mapping", mapping, "--num_of_class", str(num_of_class)
+            ]
+
+            # Run the command
+            result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+            # Check if the command was successful
+            if result.returncode == 0:
+                self.write({"status": "success", "output": result.stdout})
+            else:
+                self.set_status(500)
+                self.write({"status": "error", "error": result.stderr})
+        except Exception as e:
+            self.set_status(500)
+            self.write({"status": "error", "error": str(e)})
+
+
 def main():
     
     print("\n * ASCENDS: Advanced data SCiENce toolkit for Non-Data Scientists ")
@@ -545,6 +636,7 @@ def main():
             (r"/", MainHandler),
             (r"/open_file", OpenFileHandler),
             (r"/feature_analysis", FeatureAnalysisHandler),
+            (r"/feature_analysis_file_upload", FeatureAnalysisFileUploadHandler),
             (r"/ml_analysis", MLAnalysisHandler),
             (r"/get_model_file_list",GetModelFileListHandler),
             (r"/get_preset_file_list",GetPresetFileListHandler),
@@ -555,6 +647,7 @@ def main():
             (r"/predict_page", PredictPageHandler),
             (r"/delete_model",DeleteModelHandeler),
             (r"/get_predicted_target",GetPredictedTarget)
+            (r"/train_model", TrainModelHandler),
             ],
         
         cookie_secret="cookingpapamattlee",

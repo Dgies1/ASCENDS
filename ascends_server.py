@@ -369,8 +369,17 @@ class ExecuteMLTuningHandler(tornado.web.RequestHandler):
         self.write(alsdkjfh)
 
 class ExecuteMLAnalysisHandler(tornado.web.RequestHandler):
-    
+
+    def options(self):
+        self.set_header("Access-Control-Allow-Origin", "http://nckow0oss8o0ckssksswswow.137.184.144.166.sslip.io")
+        self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+        self.set_header("Access-Control-Allow-Headers", "Content-Type")
+        self.finish()
+
     def post(self):
+        self.set_header("Access-Control-Allow-Origin", "http://nckow0oss8o0ckssksswswow.137.184.144.166.sslip.io")
+        self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+        self.set_header("Access-Control-Allow-Headers", "Content-Type")
         try:
             response_to_send = {}
             json_obj = json_decode(self.request.body)
@@ -627,6 +636,7 @@ def main():
             (r"/get_model_file_list/?",GetModelFileListHandler),
             (r"/get_preset_file_list/?",GetPresetFileListHandler),
             (r"/execute_ml_analysis/?", ExecuteMLAnalysisHandler),
+            (r"/ARL/execute_ml/?", ExecuteMLAnalysisHandler),
             (r"/execute_ml_tuning/?", ExecuteMLTuningHandler),
             (r"/save_model/?", SaveModelHandler),
             (r"/get_model_info/?", GetModelInfoHandler),

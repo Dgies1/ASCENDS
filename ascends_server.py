@@ -1,8 +1,7 @@
 # tail -5000 ascends_server.py
 #!/usr/bin/env python3
 # coding: utf-8
-# coolify lol!
-
+# coolify
 from __future__ import print_function
 import warnings
 import tornado.escape

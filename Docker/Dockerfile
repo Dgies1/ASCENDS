@@ -5,7 +5,7 @@ EXPOSE 7777
 # Update packages
 RUN apt update && apt -y upgrade
 # Install necessary packages
-RUN apt install -y tar wget git curl bzip2 
+RUN apt install -y tar wget curl bzip2 
 # Download and install anaconda
 RUN curl -O https://repo.anaconda.com/archive/Anaconda3-2020.11-Linux-x86_64.sh
 RUN bash Anaconda3-2020.11-Linux-x86_64.sh -b -p /anaconda

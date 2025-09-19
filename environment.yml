@@ -9,6 +9,8 @@ dependencies:
  - tensorflow=2.11.1
  - keras=2.11.0
  - scikit-learn=1.2.2
- - tornado=6.3.2
+ - fastapi=0.104.1
+ - uvicorn=0.24.0
+ - pydantic=2.5.0
  - xgboost=1.7.4
  - minepy=1.2.6

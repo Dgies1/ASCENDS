@@ -23,4 +23,4 @@ SHELL ["/anaconda/bin/conda", "run", "-n", "ascends", "/bin/bash", "-c"]
 
 # Set working directory and run the server
 WORKDIR /ASCENDS
-CMD ["/anaconda/bin/conda", "run", "-n", "ascends", "python", "ascends_server.py"]
+CMD ["/anaconda/bin/conda", "run", "-n", "ascends", "uvicorn", "ascends_server:app", "--host", "0.0.0.0", "--port", "7777"]

@@ -377,39 +377,63 @@ class ExecuteMLAnalysisHandler(tornado.web.RequestHandler):
         self.finish()
 
     def post(self):
-        self.set_header("Access-Control-Allow-Origin", "http://nckow0oss8o0ckssksswswow.137.184.144.166.sslip.io")
-        self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-        self.set_header("Access-Control-Allow-Headers", "Content-Type")
-        try:
-            response_to_send = {}
-            json_obj = json_decode(self.request.body)
-            target_col = json_obj["target_col"]
-            input_cols = json_obj["input_cols"]
-            num_fold = json_obj["num_fold"]
-            preset = json_obj["preset"]
-            scaler_option = json_obj["scaler"]
-            file_path = json_obj["path_to_data"]
-            model_abbr = json_obj["model_abbr"]
-            ordinal_cols = json_obj["ordinal_cols"]
-            train_type = 'R'
-            if target_col in ordinal_cols:
-                train_type = 'C'
-            
+      self.set_header("Access-Control-Allow-Origin", "http://nckow0oss8o0ckssksswswow.137.184.144.166.sslip.io")
+      self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+      self.set_header("Access-Control-Allow-Headers", "Content-Type")
+      try:
+          response_to_send = {}
 
-            data_df, x_train, x_test, y_train, y_test, header_x, header_y = asc.data_load_shuffle(csv_file = file_path, train_cols=input_cols, cols_to_remove=[], target_col=target_col, random_state=None, ordinal_cols = ordinal_cols)
-            temp_y = pd.concat([y_train, y_test])
-            num_of_class = temp_y.max().max()
-            if (preset=='default'):
-                if train_type == 'R':
-                    model_parameters = asc.default_model_parameters()
-                else:
-                    model_parameters = asc.default_model_parameters_classifier()
-                #scaler_option = model_parameters['scaler_option']
-            else:
-                model_parameters = asc.load_model_parameter_from_file(preset)
-                #scaler_option = model_parameters['scaler_option']
-            if scaler_option=="AutoLoad":
-                scaler_option = model_parameters['scaler_option'] 
+          # Parse form data instead of JSON
+          input_data = self.get_argument("input_data", default=None)
+          if input_data:
+              input_data = json.loads(input_data)
+
+          target_col = self.get_argument("target_col", default=None)
+          input_cols = self.get_argument("input_cols", default=None)
+          num_fold = self.get_argument("num_fold", default=5)
+          preset = self.get_argument("preset", default="default")
+          scaler_option = self.get_argument("scaler", default="AutoLoad")
+          model_abbr = self.get_argument("model_abbr", default="RF")
+
+          # Convert input_data to CSV file for processing
+          import tempfile
+          with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+              # Write CSV header
+              f.write(f"{input_cols},{target_col}\n")
+              # Write data rows
+              for item in input_data:
+                  f.write(f"{item['x']},{item['y']}\n")
+              file_path = f.name
+
+          ordinal_cols = []
+          train_type = 'R'
+
+          # Process with the temporary CSV file
+          data_df, x_train, x_test, y_train, y_test, header_x, header_y = asc.data_load_shuffle(
+              csv_file=file_path,
+              train_cols=[input_cols],
+              cols_to_remove=[],
+              target_col=target_col,
+              random_state=None,
+              ordinal_cols=ordinal_cols
+          )
+
+          # Clean up temp file
+          os.unlink(file_path)
+
+          # Rest of the processing logic remains the same...
+          temp_y = pd.concat([y_train, y_test])
+          num_of_class = temp_y.max().max()
+          if (preset=='default'):
+              if train_type == 'R':
+                  model_parameters = asc.default_model_parameters()
+              else:
+                  model_parameters = asc.default_model_parameters_classifier()
+          else:
+              model_parameters = asc.load_model_parameter_from_file(preset)
+
+          if scaler_option=="AutoLoad":
+              scaler_option = model_parameters['scaler_option'] 
 
             try:
                 accuracy = -1

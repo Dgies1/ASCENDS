@@ -1,26 +1,26 @@
-# Matt Lee (lees4@ornl.gov)
-# Dongwon Shin (shind@ornl.gov)
-FROM ubuntu:latest
-EXPOSE 7777
-# Update packages
-RUN apt update && apt -y upgrade
-# Install necessary packages
-RUN apt install -y tar wget curl bzip2 
-# Download and install anaconda
-RUN curl -O https://repo.anaconda.com/archive/Anaconda3-2020.11-Linux-x86_64.sh
-RUN bash Anaconda3-2020.11-Linux-x86_64.sh -b -p /anaconda
-# Install mamba for faster package resolution
-RUN /anaconda/bin/conda install -c conda-forge mamba -y --quiet
-# Copy local code
-COPY . /ASCENDS
-RUN echo 'export PATH="/anaconda/bin:$PATH"' >> ~/.bashrc 
-RUN echo "source activate ascends" > ~/.bashrc
-ENV PATH="/anaconda/bin:$PATH"
-# Create ascends conda environment using mamba
-RUN /anaconda/bin/mamba env create -f /ASCENDS/environment.yml --name ascends --yes 
-# Launch ascends conda environment
-SHELL ["/anaconda/bin/conda", "run", "-n", "ascends", "/bin/bash", "-c"]
+# Optimized Dockerfile for ASCENDS ML API
+# Use Python slim image instead of full Ubuntu + Anaconda
+FROM python:3.10-slim
 
-# Set working directory and run the server
-WORKDIR /ASCENDS
-CMD ["/anaconda/bin/conda", "run", "-n", "ascends", "uvicorn", "ascends_server:app", "--host", "0.0.0.0", "--port", "7777"]
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies (minimal)
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+
+# Install Python packages with pip (much faster than conda)
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Expose port
+EXPOSE 7777
+
+# Run the FastAPI server
+CMD ["uvicorn", "ascends_server:app", "--host", "0.0.0.0", "--port", "7777"]

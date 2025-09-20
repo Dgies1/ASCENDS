@@ -1,0 +1,22 @@
+# Minimal requirements for ASCENDS ML API
+# Core Python packages
+numpy==1.24.3
+pandas==2.0.2
+scikit-learn==1.2.2
+
+# ML frameworks (only what's actually used)
+tensorflow==2.11.1
+keras==2.11.0
+xgboost==1.7.4
+
+# Web framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+python-multipart  # For form data handling
+
+# Visualization (used in ascends.py)
+matplotlib==3.7.1
+
+# Optional mining dependency (only if available)
+minepy==1.2.6

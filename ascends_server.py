@@ -70,9 +70,9 @@ async def execute_ml_with_formdata(
             file_path = f.name
 
         # Process with temporary file
-        data_df, x_train, y_train, header_x, header_y = asc.data_load_shuffle(
+        data_df, x_train, x_test, y_train, y_test, header_x, header_y = asc.data_load_shuffle(
             csv_file=file_path,
-            input_col=[input_cols],
+            train_cols=[input_cols],
             cols_to_remove=[],
             target_col=target_col,
             random_state=None

@@ -34,7 +34,7 @@ class MLRequest(BaseModel):
     preset: str = "default"
     scaler: str = "AutoLoad"
     model_abbr: str = "RF"
-    input_data: str = "[]"
+    input_data: List[Dict[str, float]] = []
 
 class MLResponse(BaseModel):
     MAE: float
@@ -46,19 +46,17 @@ class MLResponse(BaseModel):
     scaler: str
     fitting_line: Optional[List[Dict[str, float]]] = None
 
-@app.post("/execute_ml_with_formdata", response_model=MLResponse)
-async def execute_ml_with_formdata(
-    target_col: str = Form("y"),
-    input_cols: str = Form("x"),
-    num_fold: str = Form("5"),
-    preset: str = Form("default"),
-    scaler_option: str = Form("AutoLoad"),
-    model_abbr: str = Form("RF"),
-    input_data_str: str = Form("[]")
-):
+@app.post("/execute_ml", response_model=MLResponse)
+async def execute_ml(request: MLRequest):
     try:
-        # Parse the JSON data from input_data field
-        input_data = json.loads(input_data_str)
+        # Extract parameters from request
+        target_col = request.target_col
+        input_cols = request.input_cols
+        num_fold = request.num_fold
+        preset = request.preset
+        scaler_option = request.scaler
+        model_abbr = request.model_abbr
+        input_data = request.input_data
 
         # Create temporary CSV file from the input data
         with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
@@ -140,7 +138,7 @@ async def execute_ml_with_formdata(
         return response_data
 
     except Exception as e:
-        print(f"Error in execute_ml_with_formdata: {e}")
+        print(f"Error in execute_ml: {e}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
